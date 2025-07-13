@@ -1159,16 +1159,20 @@
             showStatus(`⏯️ Resumed from ${chapters[startIdx].title}`, 'speaking');
         }
 
-        // Enhanced visibility change handler
+        // Enhanced visibility change handler with wake lock management
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'hidden') {
                 if (isPlaying) {
-                    synth.cancel();
+                    synth.cancel(); // Cancel instead of pause to avoid API bugs
                     wasPlaying = true;
+                    console.log('Page hidden - speech cancelled, will resume when visible');
                 }
             } else if (document.visibilityState === 'visible') {
                 if (wasPlaying && !isPlaying) {
-                    // Small delay to ensure proper page focus
+                    console.log('Page visible again - attempting to resume');
+                    // Re-request wake lock since it may have been released
+                    await requestWakeLock();
+                    // Small delay to ensure proper page focus and speech synthesis readiness
                     setTimeout(resumePlayback, 500);
                 }
             }
