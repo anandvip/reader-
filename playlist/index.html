@@ -169,6 +169,15 @@
         const charCount = document.getElementById('charCount');
         const playlistList = document.getElementById('playlistList');
 
+        // Migrate old playlist items (add chapters if missing)
+        playlist = playlist.map(item => {
+            if (!item.chapters && item.text) {
+                item.chapters = splitIntoChapters(item.text);
+            }
+            return item;
+        });
+        savePlaylist(); // Save migrated data
+
         // Populate voices
         function populateVoices() {
             voices = synth.getVoices();
