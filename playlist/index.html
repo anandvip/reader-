@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web TTS App with Playlist & Resume</title>
+    <title>Web TTS App with Chapter Resume & Playlist</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -103,7 +103,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>🔊 TTS App with Resume & Playlist</h2>
+        <h2>🔊 TTS App with Chapter Resume & Playlist</h2>
         <textarea id="textArea" placeholder="Paste or type text here..." maxlength="5000"></textarea>
         <div class="character-count">
             <span id="charCount">0</span>/5000
@@ -134,10 +134,9 @@
         let isPlaying = false;
         let wakeLock = null;
         let playlist = JSON.parse(localStorage.getItem('ttsPlaylist')) || [];
-        let currentPosition = 0;
+        let currentChapterIndex = 0;
         let wasPlaying = false;
-        let currentChunks = [];
-        let currentChunkIndex = 0;
+        let chapters = [];
 
         const textArea = document.getElementById('textArea');
         const pasteButton = document.getElementById('pasteButton');
@@ -238,65 +237,58 @@
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'hidden') {
                 if (isPlaying) {
-                    synth.pause();
+                    synth.cancel(); // Cancel instead of pause to avoid API bugs
                     wasPlaying = true;
                 }
             } else if (document.visibilityState === 'visible') {
                 if (wasPlaying && !isPlaying) {
                     await requestWakeLock();
-                    resumePlayback(true); // true for back 10 sec
+                    resumePlayback();
                 }
             }
         });
 
-        // Split text into chunks
-        function splitText(text, maxLen = 200) {
+        // Split text into chapters (chunks with titles)
+        function splitIntoChapters(text, maxLen = 200) {
             const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-            const chunks = [];
+            const chapters = [];
             let current = '';
+            let chapterNum = 1;
             sentences.forEach(sentence => {
                 if ((current + sentence).length > maxLen) {
-                    chunks.push(current.trim());
+                    chapters.push({ title: `Chapter ${chapterNum}: ${current.trim().substring(0, 50)}...`, text: current.trim() });
                     current = sentence;
+                    chapterNum++;
                 } else {
                     current += sentence;
                 }
             });
-            if (current) chunks.push(current.trim());
-            return chunks;
+            if (current) {
+                chapters.push({ title: `Chapter ${chapterNum}: ${current.trim().substring(0, 50)}...`, text: current.trim() });
+            }
+            return chapters;
         }
 
-        // Estimate chars for 10 seconds (approx 150 chars base at rate 1, scale by rate)
-        function estimateBackChars(rate) {
-            return Math.round(150 * rate); // ~2.5 words/sec * 6 chars/word * 10 sec
-        }
-
-        // Speak chunks from specific index and position
-        function speakChunks(chunks, chunkIdx = 0, posInChunk = 0) {
-            if (!isPlaying || chunkIdx >= chunks.length) {
+        // Speak chapters from specific index
+        function speakChapters(chaps, chapIdx = 0) {
+            if (!isPlaying || chapIdx >= chaps.length) {
                 finishSpeaking();
                 return;
             }
-            currentChunkIndex = chunkIdx;
-            const chunkText = chunks[chunkIdx].slice(posInChunk);
-            const utt = new SpeechSynthesisUtterance(chunkText);
+            currentChapterIndex = chapIdx;
+            const utt = new SpeechSynthesisUtterance(chaps[chapIdx].text);
             if (currentVoice) utt.voice = currentVoice;
             utt.rate = parseFloat(speedControl.value);
-            utt.onboundary = (event) => {
-                if (event.name === 'word') {
-                    currentPosition = event.charIndex + posInChunk;
-                }
-            };
             utt.onstart = () => {
-                if (chunkIdx === 0 && posInChunk === 0) {
+                if (chapIdx === 0) {
                     playButton.disabled = true;
                     stopButton.disabled = false;
                     restartButton.disabled = true;
                 }
-                showStatus(`Reading chunk ${chunkIdx + 1}/${chunks.length}`);
+                showStatus(`Playing ${chaps[chapIdx].title}`);
             };
             utt.onend = () => {
-                setTimeout(() => speakChunks(chunks, chunkIdx + 1, 0), 100);
+                setTimeout(() => speakChapters(chaps, chapIdx + 1), 100);
             };
             utt.onerror = (e) => {
                 console.error('Error:', e);
@@ -309,8 +301,7 @@
         async function finishSpeaking() {
             isPlaying = false;
             wasPlaying = false;
-            currentPosition = 0;
-            currentChunkIndex = 0;
+            currentChapterIndex = 0;
             playButton.disabled = false;
             stopButton.disabled = true;
             restartButton.disabled = false;
@@ -319,27 +310,16 @@
             setTimeout(() => status.classList.remove('show'), 2000);
         }
 
-        // Resume playback, optionally back up
-        async function resumePlayback(backUp = false) {
+        // Resume playback from last chapter (or previous for context)
+        async function resumePlayback() {
             synth.cancel();
             isPlaying = true;
-            let startPos = currentPosition;
-            let startChunk = currentChunkIndex;
-            if (backUp) {
-                const backChars = estimateBackChars(parseFloat(speedControl.value));
-                startPos -= backChars;
-                if (startPos < 0) {
-                    startPos = 0;
-                    if (startChunk > 0) {
-                        startChunk--;
-                        // Approximate, but for simplicity, start from previous chunk end
-                        startPos = currentChunks[startChunk].length + startPos; // If negative, adjust
-                        if (startPos < 0) startPos = 0;
-                    }
-                }
+            let startIdx = currentChapterIndex;
+            if (startIdx > 0) {
+                startIdx--; // Back one chapter for context
             }
-            speakChunks(currentChunks, startChunk, startPos);
-            showStatus('Resumed playback');
+            speakChapters(chapters, startIdx);
+            showStatus(`Resumed from ${chapters[startIdx].title}`);
         }
 
         // Play/Read
@@ -355,10 +335,9 @@
             await requestWakeLock();
             isPlaying = true;
             wasPlaying = true;
-            currentPosition = 0;
-            currentChunkIndex = 0;
-            currentChunks = splitText(textContent);
-            speakChunks(currentChunks);
+            currentChapterIndex = 0;
+            chapters = splitIntoChapters(textContent);
+            speakChapters(chapters);
         });
 
         // Stop
@@ -372,8 +351,7 @@
             if (isPlaying) {
                 synth.cancel();
             }
-            currentPosition = 0;
-            currentChunkIndex = 0;
+            currentChapterIndex = 0;
             playButton.click();
         });
 
