@@ -426,11 +426,181 @@
             opacity: 1;
             visibility: visible;
         }
+        
+        /* Fixed Chapter Indicator */
+        .chapter-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .chapter-indicator.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .chapter-indicator .chapter-number {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        
+        .chapter-indicator .total-chapters {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+        
+        /* Enhanced Chapter Management */
+        .chapters-toggle {
+            background: rgba(102,126,234,0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .chapters-toggle:hover {
+            background: rgba(102,126,234,0.2);
+        }
+        
+        .chapters-toggle .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .chapters-toggle.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .chapter-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        
+        .chapter-item:hover {
+            background: rgba(102,126,234,0.1);
+        }
+        
+        .chapter-item:last-child {
+            border-bottom: none;
+        }
+        
+        .chapter-content {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .chapter-actions {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .chapter-item:hover .chapter-actions {
+            opacity: 1;
+        }
+        
+        .chapter-delete-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        
+        .chapter-delete-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .chapter-indicator {
+                top: 70px;
+                right: 15px;
+                width: 50px;
+                height: 50px;
+                font-size: 0.9rem;
+            }
+            
+            .chapter-indicator .chapter-number {
+                font-size: 1rem;
+            }
+            
+            .chapter-indicator .total-chapters {
+                font-size: 0.6rem;
+            }
+            
+            .chapter-actions {
+                opacity: 1; /* Always visible on mobile */
+            }
+            
+            .controls {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chapter-indicator {
+                top: 60px;
+                right: 10px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="theme-toggle" onclick="toggleTheme()" data-tooltip="Toggle Theme">
         <i class="fas fa-moon" id="themeIcon"></i>
+    </div>
+    
+    <!-- Fixed Chapter Indicator -->
+    <div class="chapter-indicator" id="chapterIndicator">
+        <div style="text-align: center;">
+            <div class="chapter-number" id="indicatorNumber">1</div>
+            <div class="total-chapters" id="indicatorTotal">of 1</div>
+        </div>
     </div>
     
     <div class="container">
@@ -579,6 +749,9 @@
         const exportButton = document.getElementById('exportButton');
         const importButton = document.getElementById('importButton');
         const importFile = document.getElementById('importFile');
+        const chapterIndicator = document.getElementById('chapterIndicator');
+        const indicatorNumber = document.getElementById('indicatorNumber');
+        const indicatorTotal = document.getElementById('indicatorTotal');
         
         // Theme management
         function toggleTheme() {
@@ -852,9 +1025,29 @@
                 const current = chapters[currentChapterIndex] || chapters[0];
                 chapterTitle.textContent = current.title;
                 chapterMeta.textContent = `${current.wordCount} words • Chapter ${current.number} of ${chapters.length}`;
+                
+                // Update fixed chapter indicator
+                updateChapterIndicator();
             } else {
                 currentChapter.classList.add('hidden');
+                hideChapterIndicator();
             }
+        }
+        
+        // Update the fixed chapter indicator
+        function updateChapterIndicator() {
+            if (chapters.length > 0 && isPlaying) {
+                indicatorNumber.textContent = (currentChapterIndex + 1);
+                indicatorTotal.textContent = `of ${chapters.length}`;
+                chapterIndicator.classList.add('show');
+            } else {
+                hideChapterIndicator();
+            }
+        }
+        
+        // Hide the fixed chapter indicator
+        function hideChapterIndicator() {
+            chapterIndicator.classList.remove('show');
         }
 
         // Enhanced progress tracking
@@ -878,6 +1071,7 @@
             totalChapters = chaps.length;
             updateProgress();
             updateChapterInfo();
+            updateChapterIndicator(); // Update the fixed indicator
             
             const utterance = new SpeechSynthesisUtterance(chaps[chapIdx].text);
             currentUtterance = utterance;
@@ -934,6 +1128,7 @@
             playButton.innerHTML = '<i class="fas fa-play btn-icon"></i>Read Aloud';
             
             await releaseWakeLock();
+            hideChapterIndicator(); // Hide the fixed indicator when finished
             
             // Show completion statistics
             if (startTime) {
@@ -1079,7 +1274,7 @@
             return Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
 
-        // Enhanced playlist rendering with better UI
+        // Enhanced playlist rendering with better UI and chapter management
         function renderPlaylist() {
             playlistList.innerHTML = '';
             
@@ -1121,11 +1316,22 @@
                             </button>
                         </div>
                     </div>
-                    <div class="chapters-list">
+                    <div class="chapters-toggle" onclick="toggleChapters(${index})" id="chaptersToggle${index}">
+                        <span><i class="fas fa-list btn-icon"></i>View Chapters (${item.chapters.length})</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="chapters-list" id="chaptersList${index}" style="display: none;">
                         ${item.chapters.map((chap, chapIdx) => `
                             <div class="chapter-item" onclick="playFromPlaylist(${index}, ${chapIdx})">
-                                <span class="chapter-text">${chap.title}</span>
-                                <span class="chapter-duration">${chap.wordCount} words</span>
+                                <div class="chapter-content">
+                                    <span class="chapter-text">${chap.title}</span>
+                                    <span class="chapter-duration">${chap.wordCount} words</span>
+                                </div>
+                                <div class="chapter-actions">
+                                    <button class="chapter-delete-btn" onclick="deleteChapter(event, ${index}, ${chapIdx})" title="Delete this chapter">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                         `).join('')}
                     </div>
@@ -1133,6 +1339,50 @@
                 playlistList.appendChild(li);
             });
         }
+        
+        // Toggle chapters visibility
+        window.toggleChapters = function(playlistIndex) {
+            const chaptersList = document.getElementById(`chaptersList${playlistIndex}`);
+            const toggle = document.getElementById(`chaptersToggle${playlistIndex}`);
+            
+            if (chaptersList.style.display === 'none') {
+                chaptersList.style.display = 'block';
+                toggle.classList.add('expanded');
+            } else {
+                chaptersList.style.display = 'none';
+                toggle.classList.remove('expanded');
+            }
+        };
+        
+        // Delete individual chapter
+        window.deleteChapter = function(event, playlistIndex, chapterIndex) {
+            event.stopPropagation(); // Prevent triggering the chapter play
+            
+            const item = playlist[playlistIndex];
+            if (item.chapters.length <= 1) {
+                alert('Cannot delete the last chapter. Remove the entire item instead.');
+                return;
+            }
+            
+            const chapter = item.chapters[chapterIndex];
+            if (confirm(`Delete "${chapter.title}"?`)) {
+                // Remove the chapter
+                item.chapters.splice(chapterIndex, 1);
+                
+                // Update chapter numbers and regenerate text
+                item.chapters.forEach((ch, idx) => {
+                    ch.number = idx + 1;
+                    ch.title = ch.title.replace(/^Chapter \d+:/, `Chapter ${idx + 1}:`);
+                });
+                
+                // Regenerate the full text from remaining chapters
+                item.text = item.chapters.map(ch => ch.text).join(' ');
+                
+                savePlaylist();
+                renderPlaylist();
+                showStatus('Chapter deleted successfully', 'success');
+            }
+        };
 
         // Enhanced add to playlist with better UX
         addToPlaylistButton.addEventListener('click', () => {
