@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Web TTS App</title>
+    <title>Web TTS App with Wake Lock</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +20,7 @@
             padding: 10px;
             box-sizing: border-box;
         }
-        button, select {
+        button, select, input {
             margin: 5px 0;
             padding: 8px;
             width: 100%;
@@ -58,6 +58,7 @@
     <select id="voiceSelect"></select>
     <label for="speedControl">Speed:</label>
     <input id="speedControl" type="number" min="0.5" max="2" step="0.1" value="1" />
+    <button id="testButton">Test Voice</button>
     <button id="playButton">Read</button>
     <button id="stopButton" disabled>Stop</button>
     <button id="restartButton">Start from Beginning</button>
@@ -69,11 +70,13 @@
         let currentVoice = null;
         let textContent = '';
         let isPlaying = false;
+        let wakeLock = null;
 
         const textArea = document.getElementById('textArea');
         const pasteButton = document.getElementById('pasteButton');
         const voiceSelect = document.getElementById('voiceSelect');
         const speedControl = document.getElementById('speedControl');
+        const testButton = document.getElementById('testButton');
         const playButton = document.getElementById('playButton');
         const stopButton = document.getElementById('stopButton');
         const restartButton = document.getElementById('restartButton');
@@ -95,7 +98,6 @@
             }
         }
 
-        // Load voices (async in some browsers)
         populateVoices();
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = populateVoices;
@@ -121,7 +123,7 @@
                 const text = await navigator.clipboard.readText();
                 textArea.value += text;
                 charCount.textContent = textArea.value.length;
-                showStatus('Text pasted', 'speaking');
+                showStatus('Text pasted');
             } catch (err) {
                 console.error('Failed to paste:', err);
                 showStatus('Clipboard paste failed. Use Ctrl+V instead.', 'error');
@@ -136,6 +138,40 @@
                 setTimeout(() => status.classList.remove('show'), 3000);
             }
         }
+
+        // Request Wake Lock
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                showStatus('Wake Lock not supported; playback may stop on screen off.', 'error');
+                return;
+            }
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
+                    showStatus('Screen wake lock released');
+                });
+                showStatus('Screen kept awake for playback');
+            } catch (err) {
+                console.error('Wake Lock error:', err);
+                showStatus(`Wake Lock failed: ${err.message}`, 'error');
+            }
+        }
+
+        // Release Wake Lock
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                await wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        // Reacquire on visibility change
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock === null && document.visibilityState === 'visible' && isPlaying) {
+                await requestWakeLock();
+            }
+        });
 
         // Split text into chunks
         function splitText(text, maxLen = 200) {
@@ -182,17 +218,18 @@
         }
 
         // Finish speaking
-        function finishSpeaking() {
+        async function finishSpeaking() {
             isPlaying = false;
             playButton.disabled = false;
             stopButton.disabled = true;
             restartButton.disabled = false;
+            await releaseWakeLock();
             showStatus('Finished reading');
             setTimeout(() => status.classList.remove('show'), 2000);
         }
 
         // Play/Read
-        playButton.addEventListener('click', () => {
+        playButton.addEventListener('click', async () => {
             textContent = textArea.value.trim();
             if (!textContent) {
                 showStatus('Enter text first', 'error');
@@ -201,28 +238,46 @@
             if (isPlaying) {
                 synth.cancel();
             }
+            await requestWakeLock(); // Acquire wake lock before starting
             isPlaying = true;
             const chunks = splitText(textContent);
             speakChunks(chunks);
         });
 
         // Stop
-        stopButton.addEventListener('click', () => {
+        stopButton.addEventListener('click', async () => {
             synth.cancel();
-            finishSpeaking();
+            await finishSpeaking();
         });
 
-        // Restart (start from beginning)
-        restartButton.addEventListener('click', () => {
+        // Restart
+        restartButton.addEventListener('click', async () => {
             if (isPlaying) {
                 synth.cancel();
             }
-            playButton.click();
+            await playButton.click();
+        });
+
+        // Test Voice
+        testButton.addEventListener('click', () => {
+            const testUtter = new SpeechSynthesisUtterance('This is a voice test.');
+            testUtter.rate = parseFloat(speedControl.value);
+            if (currentVoice) testUtter.voice = currentVoice;
+            testUtter.onstart = () => showStatus('Testing voice');
+            testUtter.onend = () => setTimeout(() => status.classList.remove('show'), 500);
+            synth.cancel();
+            synth.speak(testUtter);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') playButton.click();
+            if (e.key === 'Escape') stopButton.click();
         });
 
         // Initial check for API support
         if (!('speechSynthesis' in window)) {
-            showStatus('Speech Synthesis not supported in this browser', 'error');
+            showStatus('Speech Synthesis not supported', 'error');
             playButton.disabled = true;
             restartButton.disabled = true;
         }
