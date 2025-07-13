@@ -3,409 +3,1305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text-to-Speech Reader</title>
+    <title>Enhanced TTS Reader - Advanced Text-to-Speech App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --error-color: #ef4444;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-light: rgba(255,255,255,0.9);
+            --bg-dark: rgba(17,24,39,0.9);
+            --border-color: #e5e7eb;
         }
-
+        
+        [data-theme="dark"] {
+            --bg-light: rgba(17,24,39,0.9);
+            --bg-dark: rgba(255,255,255,0.9);
+            --text-dark: #f9fafb;
+            --text-light: #d1d5db;
+            --border-color: #374151;
+        }
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--accent-color) 100%);
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
         }
-
+        
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: var(--bg-light);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
             padding: 40px;
-            max-width: 600px;
             width: 100%;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 700px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-
+        
         .header {
             text-align: center;
             margin-bottom: 30px;
         }
-
+        
         .header h1 {
-            color: #333;
             font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), var(--accent-color));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            margin-bottom: 10px;
         }
-
-        .header p {
-            color: #666;
+        
+        .header .subtitle {
+            color: var(--text-light);
             font-size: 1.1rem;
         }
-
+        
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
         .input-section {
             margin-bottom: 25px;
         }
-
+        
         textarea {
             width: 100%;
-            min-height: 200px;
+            min-height: 220px;
             padding: 20px;
-            border: 2px solid #e1e5e9;
-            border-radius: 15px;
-            font-size: 16px;
-            font-family: inherit;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            font-size: 1rem;
             resize: vertical;
+            background: rgba(255,255,255,0.5);
+            margin-bottom: 10px;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.8);
+            color: var(--text-dark);
         }
-
+        
         textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            background: rgba(255, 255, 255, 1);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         }
-
-        textarea::placeholder {
-            color: #999;
-        }
-
-        .controls {
+        
+        .input-meta {
             display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: var(--text-light);
         }
-
-        .btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        
+        .reading-progress {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .control-group {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 8px;
         }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        
+        .control-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 500;
         }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        
+        .controls button,
+        .controls select,
+        .controls input {
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.8);
+            color: var(--text-dark);
         }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.8);
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-
-        .btn-secondary:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
+        
+        .controls button:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none !important;
         }
-
-        .speed-control {
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-color: transparent;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.9);
+            border-color: var(--border-color);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-icon {
+            margin-right: 8px;
+        }
+        
+        .volume-control {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-left: auto;
         }
-
-        .speed-control label {
-            color: #666;
-            font-weight: 500;
+        
+        .volume-slider {
+            flex: 1;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
         }
-
-        .speed-control input {
-            width: 80px;
-            padding: 8px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            text-align: center;
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
         }
-
+        
         .status {
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 12px;
             text-align: center;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            margin-bottom: 20px;
             opacity: 0;
-            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
-
+        
         .status.show {
             opacity: 1;
             transform: translateY(0);
         }
-
+        
         .status.speaking {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            border: 2px solid rgba(102, 126, 234, 0.3);
+            background: rgba(102,126,234,0.1);
+            color: var(--primary-color);
+            border: 1px solid rgba(102,126,234,0.2);
         }
-
+        
+        .status.success {
+            background: rgba(74,222,128,0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(74,222,128,0.2);
+        }
+        
         .status.error {
-            background: rgba(234, 102, 102, 0.1);
-            color: #ea6666;
-            border: 2px solid rgba(234, 102, 102, 0.3);
+            background: rgba(239,68,68,0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(239,68,68,0.2);
         }
-
-        .character-count {
-            text-align: right;
-            color: #999;
+        
+        .chapter-info {
+            background: rgba(102,126,234,0.05);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .chapter-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .chapter-meta {
             font-size: 0.9rem;
-            margin-top: 8px;
+            color: var(--text-light);
         }
-
-        @media (max-width: 480px) {
+        
+        .playlist-section {
+            margin-top: 40px;
+            border-top: 2px solid var(--border-color);
+            padding-top: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--text-dark);
+        }
+        
+        .playlist-item {
+            background: rgba(255,255,255,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .playlist-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .playlist-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .playlist-title {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1.1rem;
+        }
+        
+        .playlist-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .playlist-actions button {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        
+        .chapters-list {
+            border-top: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .chapter-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chapter-item:hover {
+            background: rgba(102,126,234,0.1);
+        }
+        
+        .chapter-item:last-child {
+            border-bottom: none;
+        }
+        
+        .chapter-text {
+            flex: 1;
+            color: var(--text-dark);
+        }
+        
+        .chapter-duration {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+        
+        .export-import {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
             .container {
                 padding: 25px;
                 margin: 10px;
             }
             
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .theme-toggle {
+                position: fixed;
+                top: 15px;
+                right: 15px;
+            }
+            
             .header h1 {
                 font-size: 2rem;
             }
-            
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .speed-control {
-                margin-left: 0;
-                justify-content: center;
-            }
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-dark);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
         }
     </style>
 </head>
 <body>
+    <div class="theme-toggle" onclick="toggleTheme()" data-tooltip="Toggle Theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+    </div>
+    
     <div class="container">
         <div class="header">
-            <h1>🔊 Text Reader</h1>
-            <p>Paste your text and listen to it being read aloud</p>
+            <h1>🎧 Enhanced TTS Reader</h1>
+            <p class="subtitle">Advanced Text-to-Speech with Smart Chapter Management</p>
         </div>
-
+        
         <div class="input-section">
-            <textarea 
-                id="textInput" 
-                placeholder="Paste your text here... (Ctrl+V or Cmd+V)"
-                maxlength="5000"
-            ></textarea>
-            <div class="character-count">
-                <span id="charCount">0</span> / 5000 characters
+            <textarea id="textArea" placeholder="Paste or type your text here... The app will automatically split it into chapters for better reading experience."></textarea>
+            <div class="input-meta">
+                <span><span id="charCount">0</span> characters • <span id="wordCount">0</span> words</span>
+                <span id="estimatedTime">Est. reading time: 0 min</span>
             </div>
         </div>
-
+        
+        <div class="reading-progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="currentChapter" class="chapter-info hidden">
+            <div class="chapter-title" id="chapterTitle">Ready to read...</div>
+            <div class="chapter-meta" id="chapterMeta">Select text and click Read to begin</div>
+        </div>
+        
         <div class="controls">
-            <button id="readBtn" class="btn btn-primary">
-                <span>▶️</span> Read Text
-            </button>
-            <button id="stopBtn" class="btn btn-secondary" disabled>
-                <span>⏹️</span> Stop
-            </button>
-            <button id="pasteBtn" class="btn btn-secondary">
-                <span>📋</span> Paste
-            </button>
+            <div class="control-group">
+                <label class="control-label">Quick Actions</label>
+                <button id="pasteButton" class="btn-secondary tooltip" data-tooltip="Paste from clipboard">
+                    <i class="fas fa-paste btn-icon"></i>Paste
+                </button>
+            </div>
             
-            <div class="speed-control">
-                <label for="speedControl">Speed:</label>
-                <input type="number" id="speedControl" min="0.1" max="2" step="0.1" value="1">
+            <div class="control-group">
+                <label class="control-label">Voice</label>
+                <select id="voiceSelect"></select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Speed</label>
+                <input id="speedControl" type="range" min="0.5" max="2" step="0.1" value="1" />
+                <span id="speedValue">1.0x</span>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Volume</label>
+                <div class="volume-control">
+                    <i class="fas fa-volume-down"></i>
+                    <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1" class="volume-slider" />
+                    <i class="fas fa-volume-up"></i>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Test</label>
+                <button id="testButton" class="btn-secondary tooltip" data-tooltip="Test current voice settings">
+                    <i class="fas fa-volume-high btn-icon"></i>Test Voice
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Playback</label>
+                <button id="playButton" class="btn-primary">
+                    <i class="fas fa-play btn-icon"></i>Read Aloud
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Stop</label>
+                <button id="stopButton" class="btn-secondary" disabled>
+                    <i class="fas fa-stop btn-icon"></i>Stop
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Restart</label>
+                <button id="restartButton" class="btn-secondary tooltip" data-tooltip="Restart from beginning">
+                    <i class="fas fa-redo btn-icon"></i>Restart
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Save</label>
+                <button id="addToPlaylistButton" class="btn-secondary tooltip" data-tooltip="Save to reading list">
+                    <i class="fas fa-bookmark btn-icon"></i>Save
+                </button>
             </div>
         </div>
-
+        
         <div id="status" class="status"></div>
+
+        <div class="playlist-section">
+            <div class="section-header">
+                <h3 class="section-title">📚 Reading Library</h3>
+                <div class="export-import">
+                    <button id="exportButton" class="btn-secondary tooltip" data-tooltip="Export library">
+                        <i class="fas fa-download btn-icon"></i>Export
+                    </button>
+                    <button id="importButton" class="btn-secondary tooltip" data-tooltip="Import library">
+                        <i class="fas fa-upload btn-icon"></i>Import
+                    </button>
+                    <input type="file" id="importFile" accept=".json" class="hidden">
+                </div>
+            </div>
+            <div id="playlistList"></div>
+        </div>
     </div>
 
     <script>
-        // Get DOM elements
-        const textInput = document.getElementById('textInput');
-        const readBtn = document.getElementById('readBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const pasteBtn = document.getElementById('pasteBtn');
+        // Initialize speech synthesis and core variables
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let currentVoice = null;
+        let textContent = '';
+        let isPlaying = false;
+        let wakeLock = null;
+        let playlist = JSON.parse(localStorage.getItem('enhancedTTSPlaylist')) || [];
+        let currentChapterIndex = 0;
+        let wasPlaying = false;
+        let chapters = [];
+        let currentUtterance = null;
+        let totalChapters = 0;
+        let startTime = null;
+        
+        // DOM element references
+        const textArea = document.getElementById('textArea');
+        const pasteButton = document.getElementById('pasteButton');
+        const voiceSelect = document.getElementById('voiceSelect');
         const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const volumeControl = document.getElementById('volumeControl');
+        const testButton = document.getElementById('testButton');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const restartButton = document.getElementById('restartButton');
+        const addToPlaylistButton = document.getElementById('addToPlaylistButton');
         const status = document.getElementById('status');
         const charCount = document.getElementById('charCount');
-
-        // Speech synthesis instance
-        let currentUtterance = null;
-        let isReading = false;
-
-        // Update character count
-        function updateCharCount() {
-            const count = textInput.value.length;
-            charCount.textContent = count;
+        const wordCount = document.getElementById('wordCount');
+        const estimatedTime = document.getElementById('estimatedTime');
+        const playlistList = document.getElementById('playlistList');
+        const progressBar = document.getElementById('progressBar');
+        const currentChapter = document.getElementById('currentChapter');
+        const chapterTitle = document.getElementById('chapterTitle');
+        const chapterMeta = document.getElementById('chapterMeta');
+        const exportButton = document.getElementById('exportButton');
+        const importButton = document.getElementById('importButton');
+        const importFile = document.getElementById('importFile');
+        
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
             
-            if (count > 4500) {
-                charCount.style.color = '#ea6666';
-            } else if (count > 4000) {
-                charCount.style.color = '#f39c12';
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('tts-theme', 'light');
             } else {
-                charCount.style.color = '#999';
+                body.setAttribute('data-theme', 'dark');
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('tts-theme', 'dark');
+            }
+        }
+        
+        // Load saved theme
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('tts-theme');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('themeIcon').className = 'fas fa-sun';
+            }
+        }
+        
+        // Migrate old playlist and initialize
+        function initializeApp() {
+            loadTheme();
+            
+            // Migrate old playlist data if exists
+            const oldPlaylist = JSON.parse(localStorage.getItem('ttsPlaylist')) || [];
+            if (oldPlaylist.length > 0 && playlist.length === 0) {
+                playlist = oldPlaylist.map(item => ({
+                    ...item,
+                    id: Date.now() + Math.random(),
+                    createdAt: new Date().toISOString(),
+                    chapters: item.chapters || splitIntoChapters(item.text || '')
+                }));
+                savePlaylist();
+                localStorage.removeItem('ttsPlaylist'); // Clean up old data
+            }
+            
+            populateVoices();
+            renderPlaylist();
+        }
+        
+        // Enhanced voice population with better sorting
+        function populateVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '<option value="">Default System Voice</option>';
+            
+            // Sort voices by language and name for better UX
+            const sortedVoices = voices.sort((a, b) => {
+                if (a.lang !== b.lang) return a.lang.localeCompare(b.lang);
+                return a.name.localeCompare(b.name);
+            });
+            
+            let currentLang = '';
+            sortedVoices.forEach((voice, index) => {
+                // Create language groups for better organization
+                if (voice.lang !== currentLang) {
+                    if (currentLang !== '') {
+                        const separator = document.createElement('option');
+                        separator.disabled = true;
+                        separator.textContent = '─────────────────────';
+                        voiceSelect.appendChild(separator);
+                    }
+                    currentLang = voice.lang;
+                }
+                
+                const option = document.createElement('option');
+                option.value = voices.indexOf(voice);
+                option.textContent = `${voice.name}${voice.default ? ' ⭐' : ''}`;
+                voiceSelect.appendChild(option);
+            });
+            
+            // Set default voice if available
+            if (voices.length > 0) {
+                const defaultVoice = voices.find(v => v.default) || voices[0];
+                currentVoice = defaultVoice;
+                voiceSelect.value = voices.indexOf(defaultVoice);
             }
         }
 
-        // Show status message
-        function showStatus(message, type = 'speaking') {
-            status.textContent = message;
+        // Enhanced voice loading with retry mechanism
+        populateVoices();
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = populateVoices;
+        }
+        
+        // Better speech synthesis loading for different browsers
+        setTimeout(() => {
+            if (voices.length === 0) {
+                populateVoices();
+            }
+        }, 100);
+
+        // Voice selection handler
+        voiceSelect.addEventListener('change', (e) => {
+            if (e.target.value !== '') {
+                currentVoice = voices[e.target.value];
+            } else {
+                currentVoice = null;
+            }
+        });
+
+        // Enhanced text analysis and statistics
+        function updateTextStats() {
+            const text = textArea.value;
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const avgWordsPerMinute = 150; // Average reading speed
+            const estimatedMinutes = Math.ceil(words / avgWordsPerMinute);
+            
+            charCount.textContent = chars.toLocaleString();
+            wordCount.textContent = words.toLocaleString();
+            estimatedTime.textContent = `Est. reading time: ${estimatedMinutes} min`;
+            
+            // Auto-generate chapters for preview
+            if (text.trim()) {
+                chapters = splitIntoChapters(text.trim());
+                updateChapterInfo();
+            }
+        }
+
+        // Enhanced text area handlers
+        textArea.addEventListener('input', updateTextStats);
+        textArea.addEventListener('paste', () => {
+            setTimeout(updateTextStats, 100); // Allow paste to complete
+        });
+
+        // Speed control with visual feedback
+        speedControl.addEventListener('input', (e) => {
+            speedValue.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+        });
+
+        // Volume control (note: this affects the overall speech, not all browsers support utterance volume)
+        volumeControl.addEventListener('input', (e) => {
+            // This will be applied to utterances, but browser support varies
+        });
+
+        // Enhanced clipboard integration
+        pasteButton.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    textArea.value += text;
+                    updateTextStats();
+                    showStatus('Text pasted successfully!', 'success');
+                } else {
+                    showStatus('Clipboard is empty', 'error');
+                }
+            } catch (err) {
+                console.error('Paste failed:', err);
+                showStatus('Paste failed. Try Ctrl+V instead.', 'error');
+            }
+        });
+
+        // Enhanced status display with auto-hide
+        function showStatus(msg, type = 'speaking', duration = 3000) {
+            status.textContent = msg;
             status.className = `status show ${type}`;
             
-            if (type === 'error') {
+            if (type === 'error' || type === 'success') {
                 setTimeout(() => {
                     status.classList.remove('show');
-                }, 3000);
+                }, duration);
             }
         }
 
-        // Hide status
-        function hideStatus() {
-            status.classList.remove('show');
-        }
-
-        // Check if browser supports speech synthesis
-        function checkSpeechSupport() {
-            if (!('speechSynthesis' in window)) {
-                showStatus('Speech synthesis not supported in this browser', 'error');
-                readBtn.disabled = true;
+        // Enhanced wake lock with better error handling
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                showStatus('Wake Lock not supported - screen may turn off during reading', 'error', 5000);
                 return false;
             }
-            return true;
+            
+            try {
+                if (wakeLock) {
+                    await wakeLock.release();
+                }
+                
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
+                });
+                
+                return true;
+            } catch (err) {
+                console.error('Wake Lock failed:', err);
+                showStatus(`Screen lock failed: ${err.message}`, 'error', 3000);
+                return false;
+            }
         }
 
-        // Read text function
-        function readText() {
-            const text = textInput.value.trim();
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                try {
+                    await wakeLock.release();
+                    wakeLock = null;
+                } catch (err) {
+                    console.error('Wake lock release failed:', err);
+                }
+            }
+        }
+
+        // Enhanced chapter splitting with better sentence detection
+        function splitIntoChapters(text, maxLen = 300) {
+            if (!text.trim()) return [];
             
-            if (!text) {
+            // Better sentence detection including more punctuation patterns
+            const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/g) || [text];
+            const chapters = [];
+            let current = '';
+            let chapterNum = 1;
+            
+            sentences.forEach(sentence => {
+                const trimmedSentence = sentence.trim();
+                if (!trimmedSentence) return;
+                
+                if ((current + ' ' + trimmedSentence).length > maxLen && current) {
+                    // Create chapter with smart title generation
+                    const title = generateChapterTitle(current, chapterNum);
+                    chapters.push({ 
+                        title, 
+                        text: current.trim(),
+                        number: chapterNum,
+                        wordCount: current.trim().split(/\s+/).length
+                    });
+                    current = trimmedSentence;
+                    chapterNum++;
+                } else {
+                    current += (current ? ' ' : '') + trimmedSentence;
+                }
+            });
+            
+            if (current.trim()) {
+                const title = generateChapterTitle(current, chapterNum);
+                chapters.push({ 
+                    title, 
+                    text: current.trim(),
+                    number: chapterNum,
+                    wordCount: current.trim().split(/\s+/).length
+                });
+            }
+            
+            return chapters;
+        }
+        
+        // Smart chapter title generation
+        function generateChapterTitle(text, number) {
+            const words = text.trim().split(/\s+/);
+            const firstFewWords = words.slice(0, 8).join(' ');
+            
+            // Try to end at a natural break
+            let title = firstFewWords;
+            if (title.length > 50) {
+                title = title.substring(0, 47) + '...';
+            } else if (words.length > 8) {
+                title += '...';
+            }
+            
+            return `Chapter ${number}: ${title}`;
+        }
+
+        // Enhanced chapter info display
+        function updateChapterInfo() {
+            if (chapters.length > 0) {
+                currentChapter.classList.remove('hidden');
+                const current = chapters[currentChapterIndex] || chapters[0];
+                chapterTitle.textContent = current.title;
+                chapterMeta.textContent = `${current.wordCount} words • Chapter ${current.number} of ${chapters.length}`;
+            } else {
+                currentChapter.classList.add('hidden');
+            }
+        }
+
+        // Enhanced progress tracking
+        function updateProgress() {
+            if (totalChapters > 0) {
+                const progress = ((currentChapterIndex + 1) / totalChapters) * 100;
+                progressBar.style.width = `${progress}%`;
+            } else {
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Enhanced speech with better error handling and progress tracking
+        function speakChapters(chaps, chapIdx = 0) {
+            if (!isPlaying || chapIdx >= chaps.length) {
+                finishSpeaking();
+                return;
+            }
+            
+            currentChapterIndex = chapIdx;
+            totalChapters = chaps.length;
+            updateProgress();
+            updateChapterInfo();
+            
+            const utterance = new SpeechSynthesisUtterance(chaps[chapIdx].text);
+            currentUtterance = utterance;
+            
+            // Enhanced utterance configuration
+            if (currentVoice) utterance.voice = currentVoice;
+            utterance.rate = parseFloat(speedControl.value);
+            utterance.volume = parseFloat(volumeControl.value);
+            utterance.pitch = 1;
+            
+            // Enhanced event handlers
+            utterance.onstart = () => {
+                if (chapIdx === 0) {
+                    playButton.disabled = true;
+                    stopButton.disabled = false;
+                    restartButton.disabled = true;
+                    playButton.innerHTML = '<i class="fas fa-pause btn-icon"></i>Reading...';
+                    startTime = Date.now();
+                }
+                showStatus(`📖 ${chaps[chapIdx].title}`, 'speaking');
+            };
+            
+            utterance.onend = () => {
+                // Small delay to prevent browser speech synthesis issues
+                setTimeout(() => speakChapters(chaps, chapIdx + 1), 200);
+            };
+            
+            utterance.onerror = (e) => {
+                console.error('Speech error:', e);
+                showStatus(`Speech error: ${e.error}`, 'error');
+                
+                // Try to continue to next chapter on certain errors
+                if (e.error === 'interrupted' || e.error === 'canceled') {
+                    return;
+                }
+                
+                // For other errors, try next chapter after a delay
+                setTimeout(() => speakChapters(chaps, chapIdx + 1), 1000);
+            };
+            
+            synth.speak(utterance);
+        }
+
+        // Enhanced finish speaking with statistics
+        async function finishSpeaking() {
+            isPlaying = false;
+            wasPlaying = false;
+            currentChapterIndex = 0;
+            currentUtterance = null;
+            
+            playButton.disabled = false;
+            stopButton.disabled = true;
+            restartButton.disabled = false;
+            playButton.innerHTML = '<i class="fas fa-play btn-icon"></i>Read Aloud';
+            
+            await releaseWakeLock();
+            
+            // Show completion statistics
+            if (startTime) {
+                const duration = Math.round((Date.now() - startTime) / 1000 / 60);
+                showStatus(`✅ Reading complete! Duration: ${duration} minutes`, 'success', 5000);
+                startTime = null;
+            } else {
+                showStatus('Reading stopped', 'success', 2000);
+            }
+            
+            updateProgress();
+            updateChapterInfo();
+        }
+
+        // Enhanced resume functionality
+        async function resumePlayback() {
+            if (!chapters.length) return;
+            
+            synth.cancel();
+            isPlaying = true;
+            wasPlaying = true;
+            
+            // Start from current chapter, or previous for context
+            let startIdx = Math.max(0, currentChapterIndex - 1);
+            
+            await requestWakeLock();
+            speakChapters(chapters, startIdx);
+            showStatus(`⏯️ Resumed from ${chapters[startIdx].title}`, 'speaking');
+        }
+
+        // Enhanced visibility change handler
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'hidden') {
+                if (isPlaying) {
+                    synth.cancel();
+                    wasPlaying = true;
+                }
+            } else if (document.visibilityState === 'visible') {
+                if (wasPlaying && !isPlaying) {
+                    // Small delay to ensure proper page focus
+                    setTimeout(resumePlayback, 500);
+                }
+            }
+        });
+
+        // Main play button handler
+        playButton.addEventListener('click', async () => {
+            textContent = textArea.value.trim();
+            if (!textContent) {
                 showStatus('Please enter some text to read', 'error');
                 return;
             }
-
-            if (!checkSpeechSupport()) {
+            
+            if (isPlaying) {
+                synth.cancel();
+                await finishSpeaking();
                 return;
             }
-
-            // Stop any current speech
-            speechSynthesis.cancel();
-
-            // Create new utterance
-            currentUtterance = new SpeechSynthesisUtterance(text);
-            currentUtterance.rate = parseFloat(speedControl.value);
-            currentUtterance.pitch = 1;
-            currentUtterance.volume = 1;
-
-            // Event listeners
-            currentUtterance.onstart = () => {
-                isReading = true;
-                readBtn.disabled = true;
-                stopBtn.disabled = false;
-                showStatus('🎵 Reading text...', 'speaking');
-            };
-
-            currentUtterance.onend = () => {
-                isReading = false;
-                readBtn.disabled = false;
-                stopBtn.disabled = true;
-                hideStatus();
-            };
-
-            currentUtterance.onerror = (event) => {
-                isReading = false;
-                readBtn.disabled = false;
-                stopBtn.disabled = true;
-                showStatus(`Error: ${event.error}`, 'error');
-            };
-
-            // Start speaking
-            speechSynthesis.speak(currentUtterance);
-        }
-
-        // Stop reading function
-        function stopReading() {
-            speechSynthesis.cancel();
-            isReading = false;
-            readBtn.disabled = false;
-            stopBtn.disabled = true;
-            hideStatus();
-        }
-
-        // Paste from clipboard function
-        async function pasteFromClipboard() {
-            try {
-                const text = await navigator.clipboard.readText();
-                textInput.value = text;
-                updateCharCount();
-                showStatus('Text pasted successfully! ✅', 'speaking');
-                setTimeout(hideStatus, 2000);
-            } catch (err) {
-                // Fallback message
-                showStatus('Please use Ctrl+V (or Cmd+V) to paste', 'error');
+            
+            // Request wake lock first
+            const wakeLockSuccess = await requestWakeLock();
+            if (!wakeLockSuccess) {
+                showStatus('Starting without screen lock - consider keeping device awake', 'error', 3000);
             }
-        }
+            
+            isPlaying = true;
+            wasPlaying = true;
+            currentChapterIndex = 0;
+            
+            chapters = splitIntoChapters(textContent);
+            if (chapters.length === 0) {
+                showStatus('No readable content found', 'error');
+                await finishSpeaking();
+                return;
+            }
+            
+            totalChapters = chapters.length;
+            showStatus(`🚀 Starting to read ${chapters.length} chapters...`, 'speaking');
+            speakChapters(chapters);
+        });
 
-        // Event listeners
-        readBtn.addEventListener('click', readText);
-        stopBtn.addEventListener('click', stopReading);
-        pasteBtn.addEventListener('click', pasteFromClipboard);
-        textInput.addEventListener('input', updateCharCount);
+        // Stop button handler
+        stopButton.addEventListener('click', async () => {
+            synth.cancel();
+            await finishSpeaking();
+        });
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + Enter to read
+        // Restart button handler
+        restartButton.addEventListener('click', () => {
+            if (isPlaying) {
+                synth.cancel();
+            }
+            currentChapterIndex = 0;
+            setTimeout(() => playButton.click(), 100);
+        });
+
+        // Enhanced test voice with current settings
+        testButton.addEventListener('click', () => {
+            const testText = 'This is a voice test with your current settings. The reading speed and voice should match what you hear during actual reading.';
+            const testUtter = new SpeechSynthesisUtterance(testText);
+            
+            testUtter.rate = parseFloat(speedControl.value);
+            testUtter.volume = parseFloat(volumeControl.value);
+            if (currentVoice) testUtter.voice = currentVoice;
+            
+            testUtter.onstart = () => showStatus('🎵 Testing voice...', 'speaking');
+            testUtter.onend = () => setTimeout(() => status.classList.remove('show'), 1000);
+            testUtter.onerror = (e) => showStatus(`Test failed: ${e.error}`, 'error');
+            
+            synth.cancel();
+            synth.speak(testUtter);
+        });
+
+        // Enhanced keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            // Ctrl/Cmd + Enter to play
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
-                if (!isReading) {
-                    readText();
+                playButton.click();
+            }
+            // Escape to stop
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                stopButton.click();
+            }
+            // Space to pause/resume (when not in textarea)
+            if (e.key === ' ' && e.target !== textArea) {
+                e.preventDefault();
+                if (isPlaying) {
+                    stopButton.click();
+                } else {
+                    playButton.click();
                 }
             }
+        });
+
+        // Enhanced playlist management
+        function savePlaylist() {
+            localStorage.setItem('enhancedTTSPlaylist', JSON.stringify(playlist));
+        }
+
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Enhanced playlist rendering with better UI
+        function renderPlaylist() {
+            playlistList.innerHTML = '';
             
-            // Escape to stop
-            if (e.key === 'Escape' && isReading) {
-                stopReading();
+            if (playlist.length === 0) {
+                playlistList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                        <i class="fas fa-book-open" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p>Your reading library is empty</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px;">Add some text and click "Save" to build your collection</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            playlist.forEach((item, index) => {
+                const createdDate = new Date(item.createdAt || Date.now()).toLocaleDateString();
+                const totalWords = item.chapters.reduce((sum, ch) => sum + ch.wordCount, 0);
+                const estimatedMinutes = Math.ceil(totalWords / 150);
+                
+                const li = document.createElement('div');
+                li.className = 'playlist-item';
+                li.innerHTML = `
+                    <div class="playlist-header">
+                        <div>
+                            <div class="playlist-title">${item.title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 5px;">
+                                ${item.chapters.length} chapters • ${totalWords.toLocaleString()} words • ~${estimatedMinutes} min reading • ${createdDate}
+                            </div>
+                        </div>
+                        <div class="playlist-actions">
+                            <button class="btn-primary" onclick="playFromPlaylist(${index}, 0)" title="Play from beginning">
+                                <i class="fas fa-play btn-icon"></i>Play
+                            </button>
+                            <button class="btn-secondary" onclick="editPlaylistItem(${index})" title="Edit title">
+                                <i class="fas fa-edit btn-icon"></i>Edit
+                            </button>
+                            <button class="btn-secondary" onclick="removeFromPlaylist(${index})" title="Remove from library">
+                                <i class="fas fa-trash btn-icon"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chapters-list">
+                        ${item.chapters.map((chap, chapIdx) => `
+                            <div class="chapter-item" onclick="playFromPlaylist(${index}, ${chapIdx})">
+                                <span class="chapter-text">${chap.title}</span>
+                                <span class="chapter-duration">${chap.wordCount} words</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                playlistList.appendChild(li);
+            });
+        }
+
+        // Enhanced add to playlist with better UX
+        addToPlaylistButton.addEventListener('click', () => {
+            const text = textArea.value.trim();
+            if (!text) {
+                showStatus('Please enter some text to save', 'error');
+                return;
+            }
+            
+            const defaultTitle = `Reading Item ${playlist.length + 1}`;
+            const title = prompt('Enter a title for this item:', defaultTitle);
+            
+            if (title) {
+                const chapters = splitIntoChapters(text);
+                const newItem = {
+                    id: generateUniqueId(),
+                    title: title.trim(),
+                    text: text,
+                    chapters: chapters,
+                    createdAt: new Date().toISOString()
+                };
+                
+                playlist.unshift(newItem); // Add to beginning for recency
+                savePlaylist();
+                renderPlaylist();
+                showStatus(`✅ "${title}" saved to library!`, 'success');
             }
         });
 
-        // Focus on text area when page loads
-        window.addEventListener('load', () => {
-            textInput.focus();
-            updateCharCount();
+        // Enhanced playlist functions
+        window.playFromPlaylist = async function(postIndex, chapIndex = 0) {
+            const item = playlist[postIndex];
+            textArea.value = item.text;
+            updateTextStats();
             
-            // Check speech support on load
-            checkSpeechSupport();
+            chapters = item.chapters;
+            currentChapterIndex = chapIndex;
+            totalChapters = chapters.length;
+            
+            if (isPlaying) {
+                synth.cancel();
+            }
+            
+            isPlaying = true;
+            wasPlaying = true;
+            
+            await requestWakeLock();
+            showStatus(`📚 Playing "${item.title}" from ${chapters[chapIndex].title}`, 'speaking');
+            speakChapters(chapters, chapIndex);
+        };
+
+        window.editPlaylistItem = function(index) {
+            const item = playlist[index];
+            const newTitle = prompt('Edit title:', item.title);
+            
+            if (newTitle && newTitle.trim() !== item.title) {
+                playlist[index].title = newTitle.trim();
+                savePlaylist();
+                renderPlaylist();
+                showStatus('Title updated!', 'success');
+            }
+        };
+
+        window.removeFromPlaylist = function(index) {
+            const item = playlist[index];
+            if (confirm(`Remove "${item.title}" from your library?`)) {
+                playlist.splice(index, 1);
+                savePlaylist();
+                renderPlaylist();
+                showStatus('Item removed from library', 'success');
+            }
+        };
+
+        // Export/Import functionality
+        exportButton.addEventListener('click', () => {
+            const dataStr = JSON.stringify(playlist, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tts-reading-library-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showStatus('Library exported successfully!', 'success');
         });
 
-        // Handle page visibility change (stop reading when tab is hidden)
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && isReading) {
-                stopReading();
+        importButton.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (Array.isArray(importedData)) {
+                        const validItems = importedData.filter(item => 
+                            item.title && item.text && Array.isArray(item.chapters)
+                        );
+                        
+                        if (validItems.length > 0) {
+                            // Add unique IDs if missing
+                            validItems.forEach(item => {
+                                if (!item.id) item.id = generateUniqueId();
+                                if (!item.createdAt) item.createdAt = new Date().toISOString();
+                            });
+                            
+                            playlist = [...validItems, ...playlist];
+                            savePlaylist();
+                            renderPlaylist();
+                            showStatus(`✅ Imported ${validItems.length} items!`, 'success');
+                        } else {
+                            showStatus('No valid items found in file', 'error');
+                        }
+                    } else {
+                        showStatus('Invalid file format', 'error');
+                    }
+                } catch (err) {
+                    console.error('Import error:', err);
+                    showStatus('Failed to import file - invalid format', 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            e.target.value = '';
+        });
+
+        // Browser compatibility check
+        function checkCompatibility() {
+            const issues = [];
+            
+            if (!('speechSynthesis' in window)) {
+                issues.push('Speech synthesis not supported');
             }
+            
+            if (!('wakeLock' in navigator)) {
+                issues.push('Wake Lock not supported');
+            }
+            
+            if (!navigator.clipboard) {
+                issues.push('Clipboard access limited');
+            }
+            
+            if (issues.length > 0) {
+                console.warn('Compatibility issues:', issues);
+                showStatus(`Note: ${issues.join(', ')}`, 'error', 5000);
+            }
+        }
+
+        // Initialize the application
+        initializeApp();
+        checkCompatibility();
+        updateTextStats();
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (isPlaying) {
+                synth.cancel();
+            }
+            releaseWakeLock();
         });
     </script>
 </body>
