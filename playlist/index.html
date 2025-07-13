@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web TTS App with Playlist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button, select, input {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        .status {
+            margin-top: 15px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(102,126,234,0.1);
+            color: #667eea;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.error {
+            background: rgba(234,102,102,0.1);
+            color: #ea6666;
+        }
+        #playlistSection {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        #playlistList {
+            list-style: none;
+            padding: 0;
+        }
+        #playlistList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        #playlistList button {
+            width: auto;
+            padding: 5px 10px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Web Text-to-Speech App with Playlist</h2>
+    <textarea id="textArea" placeholder="Paste or type text here..." maxlength="5000"></textarea>
+    <div class="character-count">
+        <span id="charCount">0</span>/5000
+    </div>
+    <button id="pasteButton">Paste from Clipboard</button>
+    <label for="voiceSelect">Select Voice:</label>
+    <select id="voiceSelect"></select>
+    <label for="speedControl">Speed:</label>
+    <input id="speedControl" type="number" min="0.5" max="2" step="0.1" value="1" />
+    <button id="testButton">Test Voice</button>
+    <button id="playButton">Read</button>
+    <button id="stopButton" disabled>Stop</button>
+    <button id="restartButton">Start from Beginning</button>
+    <button id="addToPlaylistButton">Add to Playlist</button>
+    <div id="status" class="status"></div>
+
+    <div id="playlistSection">
+        <h3>Saved Playlist</h3>
+        <ul id="playlistList"></ul>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let currentVoice = null;
+        let textContent = '';
+        let isPlaying = false;
+        let wakeLock = null;
+        let playlist = JSON.parse(localStorage.getItem('ttsPlaylist')) || [];
+
+        const textArea = document.getElementById('textArea');
+        const pasteButton = document.getElementById('pasteButton');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const speedControl = document.getElementById('speedControl');
+        const testButton = document.getElementById('testButton');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const restartButton = document.getElementById('restartButton');
+        const addToPlaylistButton = document.getElementById('addToPlaylistButton');
+        const status = document.getElementById('status');
+        const charCount = document.getElementById('charCount');
+        const playlistList = document.getElementById('playlistList');
+
+        // Populate voices
+        function populateVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '<option value="">Default voice</option>';
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' - Default' : ''}`;
+                voiceSelect.appendChild(option);
+            });
+            if (voices.length > 0) {
+                currentVoice = voices[0];
+            }
+        }
+
+        populateVoices();
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = populateVoices;
+        }
+
+        // Change voice
+        voiceSelect.addEventListener('change', (e) => {
+            if (e.target.value !== '') {
+                currentVoice = voices[e.target.value];
+            } else {
+                currentVoice = null; // Use default
+            }
+        });
+
+        // Update char count
+        textArea.addEventListener('input', () => {
+            charCount.textContent = textArea.value.length;
+        });
+
+        // Paste from clipboard
+        pasteButton.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                textArea.value += text;
+                charCount.textContent = textArea.value.length;
+                showStatus('Text pasted');
+            } catch (err) {
+                console.error('Failed to paste:', err);
+                showStatus('Clipboard paste failed. Use Ctrl+V instead.', 'error');
+            }
+        });
+
+        // Show status
+        function showStatus(msg, type = 'speaking') {
+            status.textContent = msg;
+            status.className = `status show ${type}`;
+            if (type === 'error') {
+                setTimeout(() => status.classList.remove('show'), 3000);
+            }
+        }
+
+        // Request Wake Lock
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                showStatus('Wake Lock not supported; playback may stop on screen off.', 'error');
+                return;
+            }
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
+                    showStatus('Screen wake lock released');
+                });
+                showStatus('Screen kept awake for playback');
+            } catch (err) {
+                console.error('Wake Lock error:', err);
+                showStatus(`Wake Lock failed: ${err.message}`, 'error');
+            }
+        }
+
+        // Release Wake Lock
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                await wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        // Reacquire on visibility change
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock === null && document.visibilityState === 'visible' && isPlaying) {
+                await requestWakeLock();
+            }
+        });
+
+        // Split text into chunks
+        function splitText(text, maxLen = 200) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const chunks = [];
+            let current = '';
+            sentences.forEach(sentence => {
+                if ((current + sentence).length > maxLen) {
+                    chunks.push(current.trim());
+                    current = sentence;
+                } else {
+                    current += sentence;
+                }
+            });
+            if (current) chunks.push(current.trim());
+            return chunks;
+        }
+
+        // Speak chunks recursively
+        function speakChunks(chunks, idx = 0) {
+            if (!isPlaying || idx >= chunks.length) {
+                finishSpeaking();
+                return;
+            }
+            const utt = new SpeechSynthesisUtterance(chunks[idx]);
+            if (currentVoice) utt.voice = currentVoice;
+            utt.rate = parseFloat(speedControl.value);
+            utt.onstart = () => {
+                if (idx === 0) {
+                    playButton.disabled = true;
+                    stopButton.disabled = false;
+                    restartButton.disabled = true;
+                }
+                showStatus(`Reading chunk ${idx + 1}/${chunks.length}`);
+            };
+            utt.onend = () => {
+                setTimeout(() => speakChunks(chunks, idx + 1), 100);
+            };
+            utt.onerror = (e) => {
+                console.error('Utterance error:', e);
+                finishSpeaking();
+            };
+            synth.speak(utt);
+        }
+
+        // Finish speaking
+        async function finishSpeaking() {
+            isPlaying = false;
+            playButton.disabled = false;
+            stopButton.disabled = true;
+            restartButton.disabled = false;
+            await releaseWakeLock();
+            showStatus('Finished reading');
+            setTimeout(() => status.classList.remove('show'), 2000);
+        }
+
+        // Play/Read
+        playButton.addEventListener('click', async () => {
+            textContent = textArea.value.trim();
+            if (!textContent) {
+                showStatus('Enter text first', 'error');
+                return;
+            }
+            if (isPlaying) {
+                synth.cancel();
+            }
+            await requestWakeLock(); // Acquire wake lock before starting
+            isPlaying = true;
+            const chunks = splitText(textContent);
+            speakChunks(chunks);
+        });
+
+        // Stop
+        stopButton.addEventListener('click', async () => {
+            synth.cancel();
+            await finishSpeaking();
+        });
+
+        // Restart
+        restartButton.addEventListener('click', async () => {
+            if (isPlaying) {
+                synth.cancel();
+            }
+            playButton.click();
+        });
+
+        // Test Voice
+        testButton.addEventListener('click', () => {
+            const testUtter = new SpeechSynthesisUtterance('This is a voice test.');
+            testUtter.rate = parseFloat(speedControl.value);
+            if (currentVoice) testUtter.voice = currentVoice;
+            testUtter.onstart = () => showStatus('Testing voice');
+            testUtter.onend = () => setTimeout(() => status.classList.remove('show'), 500);
+            synth.cancel();
+            synth.speak(testUtter);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') playButton.click();
+            if (e.key === 'Escape') stopButton.click();
+        });
+
+        // Initial check for API support
+        if (!('speechSynthesis' in window)) {
+            showStatus('Speech Synthesis not supported', 'error');
+            playButton.disabled = true;
+            restartButton.disabled = true;
+        }
+
+        // Playlist functions
+        function savePlaylist() {
+            localStorage.setItem('ttsPlaylist', JSON.stringify(playlist));
+        }
+
+        function renderPlaylist() {
+            playlistList.innerHTML = '';
+            playlist.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${item.title}</span>
+                    <div>
+                        <button onclick="playFromPlaylist(${index})">Play</button>
+                        <button onclick="removeFromPlaylist(${index})">Remove</button>
+                    </div>
+                `;
+                playlistList.appendChild(li);
+            });
+        }
+
+        // Add to playlist
+        addToPlaylistButton.addEventListener('click', () => {
+            const text = textArea.value.trim();
+            if (!text) {
+                showStatus('Enter text first', 'error');
+                return;
+            }
+            const title = prompt('Enter a title for this item:', `Item ${playlist.length + 1}`);
+            if (title) {
+                playlist.push({ title, text });
+                savePlaylist();
+                renderPlaylist();
+                showStatus('Added to playlist');
+            }
+        });
+
+        // Play from playlist
+        window.playFromPlaylist = function(index) {
+            const item = playlist[index];
+            textArea.value = item.text;
+            charCount.textContent = item.text.length;
+            playButton.click();
+        };
+
+        // Remove from playlist
+        window.removeFromPlaylist = function(index) {
+            playlist.splice(index, 1);
+            savePlaylist();
+            renderPlaylist();
+            showStatus('Removed from playlist');
+        };
+
+        // Initial render
+        renderPlaylist();
+    </script>
+</body>
+</html>
