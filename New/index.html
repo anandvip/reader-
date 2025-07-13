@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech Reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .input-section {
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        textarea::placeholder {
+            color: #999;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.8);
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .speed-control label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .speed-control input {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        .status.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .status.speaking {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .status.error {
+            background: rgba(234, 102, 102, 0.1);
+            color: #ea6666;
+            border: 2px solid rgba(234, 102, 102, 0.3);
+        }
+
+        .character-count {
+            text-align: right;
+            color: #999;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .speed-control {
+                margin-left: 0;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔊 Text Reader</h1>
+            <p>Paste your text and listen to it being read aloud</p>
+        </div>
+
+        <div class="input-section">
+            <textarea 
+                id="textInput" 
+                placeholder="Paste your text here... (Ctrl+V or Cmd+V)"
+                maxlength="5000"
+            ></textarea>
+            <div class="character-count">
+                <span id="charCount">0</span> / 5000 characters
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="readBtn" class="btn btn-primary">
+                <span>▶️</span> Read Text
+            </button>
+            <button id="stopBtn" class="btn btn-secondary" disabled>
+                <span>⏹️</span> Stop
+            </button>
+            <button id="pasteBtn" class="btn btn-secondary">
+                <span>📋</span> Paste
+            </button>
+            
+            <div class="speed-control">
+                <label for="speedControl">Speed:</label>
+                <input type="number" id="speedControl" min="0.1" max="2" step="0.1" value="1">
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const textInput = document.getElementById('textInput');
+        const readBtn = document.getElementById('readBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const speedControl = document.getElementById('speedControl');
+        const status = document.getElementById('status');
+        const charCount = document.getElementById('charCount');
+
+        // Speech synthesis instance
+        let currentUtterance = null;
+        let isReading = false;
+
+        // Update character count
+        function updateCharCount() {
+            const count = textInput.value.length;
+            charCount.textContent = count;
+            
+            if (count > 4500) {
+                charCount.style.color = '#ea6666';
+            } else if (count > 4000) {
+                charCount.style.color = '#f39c12';
+            } else {
+                charCount.style.color = '#999';
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type = 'speaking') {
+            status.textContent = message;
+            status.className = `status show ${type}`;
+            
+            if (type === 'error') {
+                setTimeout(() => {
+                    status.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Hide status
+        function hideStatus() {
+            status.classList.remove('show');
+        }
+
+        // Check if browser supports speech synthesis
+        function checkSpeechSupport() {
+            if (!('speechSynthesis' in window)) {
+                showStatus('Speech synthesis not supported in this browser', 'error');
+                readBtn.disabled = true;
+                return false;
+            }
+            return true;
+        }
+
+        // Read text function
+        function readText() {
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                showStatus('Please enter some text to read', 'error');
+                return;
+            }
+
+            if (!checkSpeechSupport()) {
+                return;
+            }
+
+            // Stop any current speech
+            speechSynthesis.cancel();
+
+            // Create new utterance
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.rate = parseFloat(speedControl.value);
+            currentUtterance.pitch = 1;
+            currentUtterance.volume = 1;
+
+            // Event listeners
+            currentUtterance.onstart = () => {
+                isReading = true;
+                readBtn.disabled = true;
+                stopBtn.disabled = false;
+                showStatus('🎵 Reading text...', 'speaking');
+            };
+
+            currentUtterance.onend = () => {
+                isReading = false;
+                readBtn.disabled = false;
+                stopBtn.disabled = true;
+                hideStatus();
+            };
+
+            currentUtterance.onerror = (event) => {
+                isReading = false;
+                readBtn.disabled = false;
+                stopBtn.disabled = true;
+                showStatus(`Error: ${event.error}`, 'error');
+            };
+
+            // Start speaking
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        // Stop reading function
+        function stopReading() {
+            speechSynthesis.cancel();
+            isReading = false;
+            readBtn.disabled = false;
+            stopBtn.disabled = true;
+            hideStatus();
+        }
+
+        // Paste from clipboard function
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                textInput.value = text;
+                updateCharCount();
+                showStatus('Text pasted successfully! ✅', 'speaking');
+                setTimeout(hideStatus, 2000);
+            } catch (err) {
+                // Fallback message
+                showStatus('Please use Ctrl+V (or Cmd+V) to paste', 'error');
+            }
+        }
+
+        // Event listeners
+        readBtn.addEventListener('click', readText);
+        stopBtn.addEventListener('click', stopReading);
+        pasteBtn.addEventListener('click', pasteFromClipboard);
+        textInput.addEventListener('input', updateCharCount);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + Enter to read
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!isReading) {
+                    readText();
+                }
+            }
+            
+            // Escape to stop
+            if (e.key === 'Escape' && isReading) {
+                stopReading();
+            }
+        });
+
+        // Focus on text area when page loads
+        window.addEventListener('load', () => {
+            textInput.focus();
+            updateCharCount();
+            
+            // Check speech support on load
+            checkSpeechSupport();
+        });
+
+        // Handle page visibility change (stop reading when tab is hidden)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isReading) {
+                stopReading();
+            }
+        });
+    </script>
+</body>
+</html>
