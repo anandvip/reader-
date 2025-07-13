@@ -73,6 +73,13 @@
             margin-bottom: 10px;
         }
         
+        [data-theme="dark"] .header h1 {
+            background: linear-gradient(135deg, #8b9aff, #a78bfa, #fb7cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
         .header .subtitle {
             color: var(--text-light);
             font-size: 1.1rem;
@@ -204,7 +211,7 @@
         
         .main-controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 25px;
         }
@@ -710,8 +717,8 @@
             }
             
             .main-controls {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                grid-template-columns: 1fr;
+                gap: 12px;
             }
             
             .chapter-indicator {
@@ -893,7 +900,7 @@
     <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
         <div class="modal" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <h3 class="modal-title">⚙️ Quick Actions</h3>
+                <h3 class="modal-title">⚙️ Settings & Actions</h3>
                 <button class="modal-close" onclick="closeModal()">
                     <i class="fas fa-times"></i>
                 </button>
