@@ -168,7 +168,7 @@
         }
         
         .save-btn {
-            top: -25px;
+            top: 15px;
             right: 15px;
             background: linear-gradient(135deg, var(--success-color), #22c55e);
             color: white;
@@ -679,36 +679,6 @@
             color: var(--error-color);
         }
         
-        /* Tooltip System */
-        .tooltip {
-            position: relative;
-        }
-        
-        .tooltip::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 120%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--text-dark);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            pointer-events: none;
-        }
-        
-        .tooltip:hover::after {
-            opacity: 1;
-            visibility: visible;
-        }
-        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .container {
@@ -802,12 +772,12 @@
     </style>
 </head>
 <body>
-    <div class="theme-toggle tooltip" onclick="toggleTheme()" data-tooltip="Toggle Theme">
+    <div class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon" id="themeIcon"></i>
     </div>
     
     <!-- Fixed Chapter Indicator -->
-    <div class="chapter-indicator tooltip" id="chapterIndicator" data-tooltip="Current Chapter">
+    <div class="chapter-indicator" id="chapterIndicator">
         <div style="text-align: center;">
             <div class="chapter-number" id="indicatorNumber">1</div>
             <div class="total-chapters" id="indicatorTotal">of 1</div>
