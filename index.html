@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Web TTS App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button, select {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Web Text-to-Speech App</h2>
+    <textarea id="textArea" placeholder="Paste or type text here..."></textarea>
+    <button id="pasteButton">Paste from Clipboard</button>
+    <label for="voiceSelect">Select Voice:</label>
+    <select id="voiceSelect"></select>
+    <button id="playButton">Read</button>
+    <button id="pauseButton">Pause</button>
+    <button id="restartButton">Start from Beginning</button>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let currentVoice = null;
+        let utterance = null;
+        let textContent = '';
+        let currentPosition = 0;
+        let isPlaying = false;
+        let isPaused = false;
+
+        // Populate voices
+        function populateVoices() {
+            voices = synth.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+            if (voices.length > 0) {
+                currentVoice = voices[0];
+            }
+        }
+
+        // Load voices (async in some browsers)
+        populateVoices();
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = populateVoices;
+        }
+
+        // Change voice
+        document.getElementById('voiceSelect').addEventListener('change', (e) => {
+            currentVoice = voices[e.target.value];
+        });
+
+        // Paste from clipboard
+        document.getElementById('pasteButton').addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('textArea').value += text;
+            } catch (err) {
+                console.error('Failed to paste:', err);
+            }
+        });
+
+        // Create utterance with boundary tracking
+        function createUtterance(text) {
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.voice = currentVoice;
+            utt.onboundary = (event) => {
+                if (event.name === 'word') {
+                    currentPosition = event.charIndex;
+                }
+            };
+            utt.onend = () => {
+                isPlaying = false;
+                isPaused = false;
+                currentPosition = 0;
+                document.getElementById('pauseButton').textContent = 'Pause';
+            };
+            return utt;
+        }
+
+        // Play
+        document.getElementById('playButton').addEventListener('click', () => {
+            textContent = document.getElementById('textArea').value.trim();
+            if (!textContent) return;
+
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            if (isPaused) {
+                synth.resume();
+                isPaused = false;
+                document.getElementById('pauseButton').textContent = 'Pause';
+            } else {
+                utterance = createUtterance(textContent.slice(currentPosition));
+                synth.speak(utterance);
+                isPlaying = true;
+            }
+        });
+
+        // Pause/Resume
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            if (!isPlaying) return;
+
+            if (isPaused) {
+                synth.resume();
+                isPaused = false;
+                document.getElementById('pauseButton').textContent = 'Pause';
+            } else {
+                synth.pause();
+                isPaused = true;
+                document.getElementById('pauseButton').textContent = 'Resume';
+            }
+        });
+
+        // Restart
+        document.getElementById('restartButton').addEventListener('click', () => {
+            if (synth.speaking) {
+                synth.cancel();
+            }
+            currentPosition = 0;
+            isPaused = false;
+            isPlaying = false;
+            document.getElementById('pauseButton').textContent = 'Pause';
+            // Trigger play
+            document.getElementById('playButton').click();
+        });
+    </script>
+</body>
+</html>
