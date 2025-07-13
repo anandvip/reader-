@@ -49,7 +49,6 @@
         let textContent = '';
         let currentPosition = 0;
         let isPlaying = false;
-        let isPaused = false;
 
         // Populate voices
         function populateVoices() {
@@ -85,6 +84,7 @@
                 document.getElementById('textArea').value += text;
             } catch (err) {
                 console.error('Failed to paste:', err);
+                alert('Clipboard paste failed. This may require a secure context (HTTPS) or manual permission.');
             }
         });
 
@@ -99,7 +99,6 @@
             };
             utt.onend = () => {
                 isPlaying = false;
-                isPaused = false;
                 currentPosition = 0;
                 document.getElementById('pauseButton').textContent = 'Pause';
             };
@@ -111,13 +110,13 @@
             textContent = document.getElementById('textArea').value.trim();
             if (!textContent) return;
 
-            if (synth.speaking) {
+            // Only cancel if not paused
+            if (!synth.paused && synth.speaking) {
                 synth.cancel();
             }
 
-            if (isPaused) {
+            if (synth.paused) {
                 synth.resume();
-                isPaused = false;
                 document.getElementById('pauseButton').textContent = 'Pause';
             } else {
                 utterance = createUtterance(textContent.slice(currentPosition));
@@ -130,13 +129,11 @@
         document.getElementById('pauseButton').addEventListener('click', () => {
             if (!isPlaying) return;
 
-            if (isPaused) {
+            if (synth.paused) {
                 synth.resume();
-                isPaused = false;
                 document.getElementById('pauseButton').textContent = 'Pause';
             } else {
                 synth.pause();
-                isPaused = true;
                 document.getElementById('pauseButton').textContent = 'Resume';
             }
         });
@@ -147,8 +144,6 @@
                 synth.cancel();
             }
             currentPosition = 0;
-            isPaused = false;
-            isPlaying = false;
             document.getElementById('pauseButton').textContent = 'Pause';
             // Trigger play
             document.getElementById('playButton').click();
