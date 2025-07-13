@@ -80,14 +80,32 @@
             padding: 0;
         }
         #playlistList li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             padding: 10px;
             border-bottom: 1px solid #eee;
             background: rgba(255,255,255,0.5);
             border-radius: 8px;
             margin-bottom: 10px;
+        }
+        #playlistList li .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #playlistList li details summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #playlistList li details ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+        #playlistList li details ul li {
+            padding: 5px 0;
+            cursor: pointer;
+            color: #667eea;
+        }
+        #playlistList li details ul li:hover {
+            text-decoration: underline;
         }
         #playlistList button {
             width: auto;
@@ -185,13 +203,15 @@
             charCount.textContent = textArea.value.length;
         });
 
-        // Paste from clipboard
+        // Paste from clipboard (generate chapters on paste)
         pasteButton.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
                 textArea.value += text;
                 charCount.textContent = textArea.value.length;
                 showStatus('Text pasted');
+                // Auto-generate chapters for preview/play
+                chapters = splitIntoChapters(textArea.value.trim());
             } catch (err) {
                 console.error('Failed to paste:', err);
                 showStatus('Paste failed. Use Ctrl+V.', 'error');
@@ -389,17 +409,25 @@
             playlist.forEach((item, index) => {
                 const li = document.createElement('li');
                 li.innerHTML = `
-                    <span>${item.title}</span>
-                    <div>
-                        <button class="btn-primary" onclick="playFromPlaylist(${index})"><i class="fas fa-play btn-icon"></i>Play</button>
-                        <button class="btn-secondary" onclick="removeFromPlaylist(${index})"><i class="fas fa-trash btn-icon"></i>Remove</button>
+                    <div class="post-header">
+                        <span>${item.title}</span>
+                        <div>
+                            <button class="btn-primary" onclick="playFromPlaylist(${index}, 0)"><i class="fas fa-play btn-icon"></i>Play</button>
+                            <button class="btn-secondary" onclick="removeFromPlaylist(${index})"><i class="fas fa-trash btn-icon"></i>Remove</button>
+                        </div>
                     </div>
+                    <details>
+                        <summary>Chapters</summary>
+                        <ul>
+                            ${item.chapters.map((chap, chapIdx) => `<li onclick="playFromPlaylist(${index}, ${chapIdx})">${chap.title}</li>`).join('')}
+                        </ul>
+                    </details>
                 `;
                 playlistList.appendChild(li);
             });
         }
 
-        // Add to playlist
+        // Add to playlist (generate chapters)
         addToPlaylistButton.addEventListener('click', () => {
             const text = textArea.value.trim();
             if (!text) {
@@ -408,19 +436,28 @@
             }
             const title = prompt('Title:', `Item ${playlist.length + 1}`);
             if (title) {
-                playlist.push({ title, text });
+                const postChapters = splitIntoChapters(text);
+                playlist.push({ title, text, chapters: postChapters });
                 savePlaylist();
                 renderPlaylist();
-                showStatus('Added');
+                showStatus('Added with chapters');
             }
         });
 
-        // Play from playlist
-        window.playFromPlaylist = function(index) {
-            const item = playlist[index];
+        // Play from playlist (optionally from specific chapter)
+        window.playFromPlaylist = function(postIndex, chapIndex = 0) {
+            const item = playlist[postIndex];
             textArea.value = item.text;
             charCount.textContent = item.text.length;
-            playButton.click();
+            chapters = item.chapters;
+            currentChapterIndex = chapIndex;
+            if (isPlaying) {
+                synth.cancel();
+            }
+            isPlaying = true;
+            wasPlaying = true;
+            requestWakeLock();
+            speakChapters(chapters, chapIndex);
         };
 
         // Remove from playlist
