@@ -29,36 +29,65 @@
             display: block;
             margin-top: 10px;
         }
+        .status {
+            margin-top: 15px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(102,126,234,0.1);
+            color: #667eea;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.error {
+            background: rgba(234,102,102,0.1);
+            color: #ea6666;
+        }
     </style>
 </head>
 <body>
     <h2>Web Text-to-Speech App</h2>
-    <textarea id="textArea" placeholder="Paste or type text here..."></textarea>
+    <textarea id="textArea" placeholder="Paste or type text here..." maxlength="5000"></textarea>
+    <div class="character-count">
+        <span id="charCount">0</span>/5000
+    </div>
     <button id="pasteButton">Paste from Clipboard</button>
     <label for="voiceSelect">Select Voice:</label>
     <select id="voiceSelect"></select>
+    <label for="speedControl">Speed:</label>
+    <input id="speedControl" type="number" min="0.5" max="2" step="0.1" value="1" />
     <button id="playButton">Read</button>
-    <button id="pauseButton">Pause</button>
+    <button id="stopButton" disabled>Stop</button>
     <button id="restartButton">Start from Beginning</button>
+    <div id="status" class="status"></div>
 
     <script>
         const synth = window.speechSynthesis;
         let voices = [];
         let currentVoice = null;
-        let utterance = null;
         let textContent = '';
-        let currentPosition = 0;
         let isPlaying = false;
+
+        const textArea = document.getElementById('textArea');
+        const pasteButton = document.getElementById('pasteButton');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const speedControl = document.getElementById('speedControl');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const restartButton = document.getElementById('restartButton');
+        const status = document.getElementById('status');
+        const charCount = document.getElementById('charCount');
 
         // Populate voices
         function populateVoices() {
             voices = synth.getVoices();
-            const voiceSelect = document.getElementById('voiceSelect');
-            voiceSelect.innerHTML = '';
+            voiceSelect.innerHTML = '<option value="">Default voice</option>';
             voices.forEach((voice, index) => {
                 const option = document.createElement('option');
                 option.value = index;
-                option.textContent = `${voice.name} (${voice.lang})`;
+                option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' - Default' : ''}`;
                 voiceSelect.appendChild(option);
             });
             if (voices.length > 0) {
@@ -73,81 +102,130 @@
         }
 
         // Change voice
-        document.getElementById('voiceSelect').addEventListener('change', (e) => {
-            currentVoice = voices[e.target.value];
+        voiceSelect.addEventListener('change', (e) => {
+            if (e.target.value !== '') {
+                currentVoice = voices[e.target.value];
+            } else {
+                currentVoice = null; // Use default
+            }
+        });
+
+        // Update char count
+        textArea.addEventListener('input', () => {
+            charCount.textContent = textArea.value.length;
         });
 
         // Paste from clipboard
-        document.getElementById('pasteButton').addEventListener('click', async () => {
+        pasteButton.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
-                document.getElementById('textArea').value += text;
+                textArea.value += text;
+                charCount.textContent = textArea.value.length;
+                showStatus('Text pasted', 'speaking');
             } catch (err) {
                 console.error('Failed to paste:', err);
-                alert('Clipboard paste failed. This may require a secure context (HTTPS) or manual permission.');
+                showStatus('Clipboard paste failed. Use Ctrl+V instead.', 'error');
             }
         });
 
-        // Create utterance with boundary tracking
-        function createUtterance(text) {
-            const utt = new SpeechSynthesisUtterance(text);
-            utt.voice = currentVoice;
-            utt.onboundary = (event) => {
-                if (event.name === 'word') {
-                    currentPosition = event.charIndex;
-                }
-            };
-            utt.onend = () => {
-                isPlaying = false;
-                currentPosition = 0;
-                document.getElementById('pauseButton').textContent = 'Pause';
-            };
-            return utt;
+        // Show status
+        function showStatus(msg, type = 'speaking') {
+            status.textContent = msg;
+            status.className = `status show ${type}`;
+            if (type === 'error') {
+                setTimeout(() => status.classList.remove('show'), 3000);
+            }
         }
 
-        // Play
-        document.getElementById('playButton').addEventListener('click', () => {
-            textContent = document.getElementById('textArea').value.trim();
-            if (!textContent) return;
+        // Split text into chunks
+        function splitText(text, maxLen = 200) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const chunks = [];
+            let current = '';
+            sentences.forEach(sentence => {
+                if ((current + sentence).length > maxLen) {
+                    chunks.push(current.trim());
+                    current = sentence;
+                } else {
+                    current += sentence;
+                }
+            });
+            if (current) chunks.push(current.trim());
+            return chunks;
+        }
 
-            // Only cancel if not paused
-            if (!synth.paused && synth.speaking) {
+        // Speak chunks recursively
+        function speakChunks(chunks, idx = 0) {
+            if (!isPlaying || idx >= chunks.length) {
+                finishSpeaking();
+                return;
+            }
+            const utt = new SpeechSynthesisUtterance(chunks[idx]);
+            if (currentVoice) utt.voice = currentVoice;
+            utt.rate = parseFloat(speedControl.value);
+            utt.onstart = () => {
+                if (idx === 0) {
+                    playButton.disabled = true;
+                    stopButton.disabled = false;
+                    restartButton.disabled = true;
+                }
+                showStatus(`Reading chunk ${idx + 1}/${chunks.length}`);
+            };
+            utt.onend = () => {
+                setTimeout(() => speakChunks(chunks, idx + 1), 100);
+            };
+            utt.onerror = (e) => {
+                console.error('Utterance error:', e);
+                finishSpeaking();
+            };
+            synth.speak(utt);
+        }
+
+        // Finish speaking
+        function finishSpeaking() {
+            isPlaying = false;
+            playButton.disabled = false;
+            stopButton.disabled = true;
+            restartButton.disabled = false;
+            showStatus('Finished reading');
+            setTimeout(() => status.classList.remove('show'), 2000);
+        }
+
+        // Play/Read
+        playButton.addEventListener('click', () => {
+            textContent = textArea.value.trim();
+            if (!textContent) {
+                showStatus('Enter text first', 'error');
+                return;
+            }
+            if (isPlaying) {
                 synth.cancel();
             }
-
-            if (synth.paused) {
-                synth.resume();
-                document.getElementById('pauseButton').textContent = 'Pause';
-            } else {
-                utterance = createUtterance(textContent.slice(currentPosition));
-                synth.speak(utterance);
-                isPlaying = true;
-            }
+            isPlaying = true;
+            const chunks = splitText(textContent);
+            speakChunks(chunks);
         });
 
-        // Pause/Resume
-        document.getElementById('pauseButton').addEventListener('click', () => {
-            if (!isPlaying) return;
-
-            if (synth.paused) {
-                synth.resume();
-                document.getElementById('pauseButton').textContent = 'Pause';
-            } else {
-                synth.pause();
-                document.getElementById('pauseButton').textContent = 'Resume';
-            }
+        // Stop
+        stopButton.addEventListener('click', () => {
+            synth.cancel();
+            finishSpeaking();
         });
 
-        // Restart
-        document.getElementById('restartButton').addEventListener('click', () => {
-            if (synth.speaking) {
+        // Restart (start from beginning)
+        restartButton.addEventListener('click', () => {
+            if (isPlaying) {
                 synth.cancel();
             }
-            currentPosition = 0;
-            document.getElementById('pauseButton').textContent = 'Pause';
-            // Trigger play
-            document.getElementById('playButton').click();
+            playButton.click();
         });
+
+        // Initial check for API support
+        if (!('speechSynthesis' in window)) {
+            showStatus('Speech Synthesis not supported in this browser', 'error');
+            playButton.disabled = true;
+            restartButton.disabled = true;
+        }
     </script>
 </body>
 </html>
