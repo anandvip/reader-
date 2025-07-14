@@ -1117,16 +1117,26 @@
 
         // Text Analysis
         function analyzeText() {
-            const text = textArea.value;
+            let text = textArea.value;
+            
+            // Ensure text is a string and not an object
+            if (typeof text !== 'string') {
+                console.warn('Text is not a string:', typeof text, text);
+                text = String(text || '');
+                textArea.value = text;
+            }
+            
             currentText = text;
             
             // Update stats
             charCount.textContent = text.length.toLocaleString();
-            wordCount.textContent = text.split(/\s+/).filter(word => word.length > 0).length.toLocaleString();
+            
+            // Count words properly
+            const words = text.trim() ? text.split(/\s+/).filter(word => word.length > 0) : [];
+            wordCount.textContent = words.length.toLocaleString();
             
             // Estimate reading time (average 150 words per minute for TTS)
-            const words = text.split(/\s+/).filter(word => word.length > 0).length;
-            const minutes = Math.ceil(words / 150);
+            const minutes = Math.ceil(words.length / 150);
             estimatedTime.textContent = `${minutes}m`;
             
             // Split into chapters
@@ -1135,6 +1145,12 @@
         }
 
         function splitIntoChapters(text) {
+            // Ensure input is a string
+            if (typeof text !== 'string') {
+                console.warn('splitIntoChapters received non-string:', typeof text, text);
+                text = String(text || '');
+            }
+            
             if (!text.trim()) {
                 chapters = [];
                 return;
@@ -1149,14 +1165,18 @@
             let wordCount = 0;
             
             for (const paragraph of paragraphs) {
-                const paragraphWords = paragraph.split(/\s+/).length;
+                // Ensure paragraph is a string
+                const paragraphStr = String(paragraph || '').trim();
+                if (!paragraphStr) continue;
+                
+                const paragraphWords = paragraphStr.split(/\s+/).length;
                 
                 if (wordCount + paragraphWords > wordsPerChapter && currentChapter) {
                     chapters.push(currentChapter.trim());
-                    currentChapter = paragraph;
+                    currentChapter = paragraphStr;
                     wordCount = paragraphWords;
                 } else {
-                    currentChapter += (currentChapter ? '\n\n' : '') + paragraph;
+                    currentChapter += (currentChapter ? '\n\n' : '') + paragraphStr;
                     wordCount += paragraphWords;
                 }
             }
@@ -1165,9 +1185,15 @@
                 chapters.push(currentChapter.trim());
             }
             
+            // Fallback: if no chapters created but we have text, make one chapter
             if (chapters.length === 0 && text.trim()) {
-                chapters = [text];
+                chapters = [String(text).trim()];
             }
+            
+            // Validate chapters array
+            chapters = chapters.filter(chapter => typeof chapter === 'string' && chapter.trim());
+            
+            console.log('Created chapters:', chapters.length, chapters.map(c => c.substring(0, 50) + '...'));
         }
 
         function updateChapterDisplay() {
@@ -1283,15 +1309,23 @@
             
             try {
                 const docId = Date.now().toString(); // Simple ID generation
+                
+                // Ensure all data is properly typed
+                const content = String(currentText || '');
+                const title = content.substring(0, 50) + (content.length > 50 ? '...' : '');
+                const words = content.trim() ? content.split(/\s+/).filter(word => word.length > 0) : [];
+                
                 const docData = {
                     id: docId,
-                    title: currentText.substring(0, 50) + (currentText.length > 50 ? '...' : ''),
-                    content: currentText,
-                    chapters: chapters.length,
-                    wordCount: currentText.split(/\s+/).filter(word => word.length > 0).length,
+                    title: title,
+                    content: content,
+                    chapters: Math.max(1, chapters.length),
+                    wordCount: words.length,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
+                
+                console.log('Saving document:', docData);
                 
                 // Save to the original structure: users/{userId}/library/{docId}
                 await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).set(docData);
@@ -1401,7 +1435,15 @@
                 const doc = await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).get();
                 if (doc.exists) {
                     const data = doc.data();
-                    textArea.value = data.content || '';
+                    
+                    // Ensure content is a string
+                    let content = data.content || '';
+                    if (typeof content !== 'string') {
+                        console.warn('Document content is not a string:', typeof content, content);
+                        content = String(content);
+                    }
+                    
+                    textArea.value = content;
                     analyzeText();
                     showToast('Document loaded! 📄', 'success');
                     librarySection.classList.add('hidden');
@@ -1561,6 +1603,18 @@
 
         // Event Listeners
         textArea.addEventListener('input', analyzeText);
+        textArea.addEventListener('paste', (e) => {
+            // Handle paste events to ensure clean text
+            setTimeout(() => {
+                let text = textArea.value;
+                if (typeof text !== 'string') {
+                    text = String(text || '');
+                    textArea.value = text;
+                }
+                analyzeText();
+            }, 100);
+        });
+        
         playPauseBtn.addEventListener('click', togglePlayPause);
         prevChapterBtn.addEventListener('click', previousChapter);
         nextChapterBtn.addEventListener('click', nextChapter);
@@ -1581,6 +1635,9 @@
         document.getElementById('saveText').addEventListener('click', saveToCloud);
         document.getElementById('clearText').addEventListener('click', () => {
             textArea.value = '';
+            currentText = '';
+            chapters = [];
+            currentChapterIndex = 0;
             analyzeText();
             showToast('Text cleared', 'info');
         });
@@ -1619,6 +1676,13 @@
 
         // Initialize
         loadTheme();
+        
+        // Clear any existing problematic content
+        textArea.value = '';
+        currentText = '';
+        chapters = [];
+        currentChapterIndex = 0;
+        
         analyzeText();
         
         // Global error handler for unhandled promise rejections
@@ -1656,9 +1720,10 @@
             }
         }, 3000);
         
-        // Add some sample text for demo
-        if (!textArea.value) {
-            textArea.value = `Welcome to the Enhanced TTS Reader with Bold Mobile Experience!
+        // Add some sample text for demo (only if textarea is empty)
+        setTimeout(() => {
+            if (!textArea.value.trim()) {
+                textArea.value = `Welcome to the Enhanced TTS Reader with Bold Mobile Experience!
 
 This revolutionary text-to-speech application is designed with a mobile-first approach that maximizes every pixel of your screen real estate. No more cramped interfaces that look like they're "living in fear" - this is how mobile TTS should feel.
 
@@ -1675,8 +1740,9 @@ The interface transforms your mobile device into a premium reading experience. E
 Try speaking this text aloud - notice how the app automatically splits content into manageable chapters, making long-form reading a joy rather than a chore.
 
 This is what happens when you stop designing mobile interfaces that are afraid to take up space and start creating experiences that feel truly native to the platform.`;
-            analyzeText();
-        }
+                analyzeText();
+            }
+        }, 1000);
     </script>
 </body>
 </html>
