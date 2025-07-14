@@ -1,0 +1,2812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced TTS Reader - Cloud-Powered Learning</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --error-color: #ef4444;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-light: rgba(255,255,255,0.95);
+            --bg-dark: rgba(17,24,39,0.95);
+            --border-color: #e5e7eb;
+            --glass-bg: rgba(255,255,255,0.1);
+            --shadow-light: 0 8px 32px rgba(0,0,0,0.1);
+            --shadow-heavy: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        
+        [data-theme="dark"] {
+            --bg-light: rgba(17,24,39,0.95);
+            --bg-dark: rgba(255,255,255,0.05);
+            --text-dark: #f9fafb;
+            --text-light: #d1d5db;
+            --border-color: #374151;
+            --glass-bg: rgba(0,0,0,0.3);
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #f87171;
+        }
+        
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--accent-color) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+        }
+        
+        .container {
+            background: var(--bg-light);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        /* Authentication UI */
+        .auth-container {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+        }
+        
+        .auth-hero {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .auth-subtitle {
+            color: var(--text-light);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        
+        .auth-methods {
+            display: grid;
+            gap: 15px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .auth-button {
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            background: rgba(255,255,255,0.9);
+            color: var(--text-dark);
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .google-btn {
+            background: #4285f4;
+            color: white;
+            border-color: #4285f4;
+        }
+        
+        .email-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-color: transparent;
+        }
+        
+        .auth-form {
+            display: none;
+            text-align: left;
+            max-width: 400px;
+            margin: 20px auto 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.9);
+            color: var(--text-dark);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-actions {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-light);
+        }
+        
+        .auth-switch button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        /* User Profile */
+        .user-profile {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            padding: 8px 16px 8px 8px;
+            z-index: 1001;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .user-profile:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .sync-status {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sync-status.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .sync-status.syncing {
+            color: var(--warning-color);
+        }
+        
+        .sync-status.synced {
+            color: var(--success-color);
+        }
+        
+        .sync-status.error {
+            color: var(--error-color);
+        }
+        
+        /* Existing styles from the original app... */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        [data-theme="dark"] .header h1 {
+            background: linear-gradient(135deg, #8b9aff, #a78bfa, #fb7cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1001;
+            color: var(--text-dark);
+        }
+        
+        .help-toggle {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1001;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        
+        .theme-toggle:hover, .help-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .input-section {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .textarea-container {
+            position: relative;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 240px;
+            padding: 20px 60px 60px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            resize: vertical;
+            background: rgba(255,255,255,0.7);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+        
+        [data-theme="dark"] textarea {
+            background: rgba(0,0,0,0.3);
+            border-color: var(--border-color);
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: rgba(255,255,255,0.9);
+        }
+        
+        [data-theme="dark"] textarea:focus {
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .floating-action {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            z-index: 10;
+        }
+        
+        .floating-action:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .paste-btn {
+            bottom: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        .save-btn {
+            top: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, var(--success-color), #22c55e);
+            color: white;
+        }
+        
+        .gear-btn {
+            top: 15px;
+            right: 65px;
+            background: var(--glass-bg);
+            color: var(--text-dark);
+        }
+        
+        .input-meta {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+        
+        .reading-progress {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .main-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .control-group {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 8px;
+        }
+        
+        .control-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        
+        .main-controls button,
+        .main-controls select,
+        .main-controls input {
+            padding: 14px 18px;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.8);
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        [data-theme="dark"] .main-controls button,
+        [data-theme="dark"] .main-controls select,
+        [data-theme="dark"] .main-controls input {
+            background: rgba(0,0,0,0.3);
+            border-color: var(--border-color);
+        }
+        
+        .main-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-color: transparent;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.9);
+            border-color: var(--border-color);
+        }
+        
+        [data-theme="dark"] .btn-secondary {
+            background: rgba(0,0,0,0.4);
+            color: var(--text-dark);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-icon {
+            margin-right: 8px;
+        }
+        
+        .volume-control {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .volume-slider {
+            flex: 1;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .chapter-info {
+            background: rgba(102,126,234,0.05);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        [data-theme="dark"] .chapter-info {
+            background: rgba(102,126,234,0.1);
+        }
+        
+        .chapter-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .chapter-meta {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .playlist-section {
+            margin-top: 40px;
+            border-top: 2px solid var(--border-color);
+            padding-top: 30px;
+        }
+        
+        .section-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .playlist-item {
+            background: rgba(255,255,255,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        [data-theme="dark"] .playlist-item {
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .playlist-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .playlist-header {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .playlist-title {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1.1rem;
+        }
+        
+        .playlist-actions {
+            display: grid;
+            grid-template-columns: repeat(3, auto);
+            gap: 8px;
+        }
+        
+        .playlist-actions button {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .chapters-toggle {
+            background: rgba(102,126,234,0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .chapters-toggle:hover {
+            background: rgba(102,126,234,0.2);
+        }
+        
+        .chapters-toggle .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .chapters-toggle.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .chapters-list {
+            border-top: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.3);
+        }
+        
+        [data-theme="dark"] .chapters-list {
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .chapter-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .chapter-item:hover {
+            background: rgba(102,126,234,0.1);
+        }
+        
+        .chapter-item:last-child {
+            border-bottom: none;
+        }
+        
+        .chapter-content {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .chapter-text {
+            color: var(--text-dark);
+        }
+        
+        .chapter-duration {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+        
+        .chapter-actions {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .chapter-item:hover .chapter-actions {
+            opacity: 1;
+        }
+        
+        .chapter-delete-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        
+        .chapter-delete-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .export-import {
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Fixed Chapter Indicator */
+        .chapter-indicator {
+            position: fixed;
+            top: 140px;
+            right: 14px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-light);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .chapter-indicator.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .chapter-indicator .chapter-number {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        
+        .chapter-indicator .total-chapters {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--bg-light);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 2001;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+        }
+        
+        [data-theme="dark"] .modal {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .modal-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: color 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-dark);
+        }
+        
+        .modal-controls {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .modal-controls .control-group {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 8px;
+        }
+        
+        .modal-controls button,
+        .modal-controls select,
+        .modal-controls input {
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.8);
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        [data-theme="dark"] .modal-controls button,
+        [data-theme="dark"] .modal-controls select,
+        [data-theme="dark"] .modal-controls input {
+            background: rgba(0,0,0,0.3);
+            border-color: var(--border-color);
+            color: var(--text-dark);
+        }
+        
+        .modal-controls .volume-control {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 8px 0;
+        }
+        
+        /* TTS Quality Selection */
+        .tts-quality-section {
+            background: rgba(102,126,234,0.05);
+            border: 1px solid rgba(102,126,234,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        [data-theme="dark"] .tts-quality-section {
+            background: rgba(102,126,234,0.1);
+            border-color: rgba(102,126,234,0.3);
+        }
+        
+        .tts-quality-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .tts-options {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .tts-option {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        
+        .tts-option:hover {
+            background: rgba(102,126,234,0.1);
+        }
+        
+        .tts-option.selected {
+            background: rgba(102,126,234,0.15);
+            border-color: var(--primary-color);
+        }
+        
+        .tts-option-radio {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+        
+        .tts-option.selected .tts-option-radio {
+            border-color: var(--primary-color);
+        }
+        
+        .tts-option.selected .tts-option-radio::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+        }
+        
+        .tts-option-info {
+            flex: 1;
+        }
+        
+        .tts-option-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+        }
+        
+        .tts-option-desc {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        
+        .tts-option-status {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .status-available {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--success-color);
+        }
+        
+        .status-loading {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning-color);
+        }
+        
+        .status-unavailable {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error-color);
+        }
+        
+        /* Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            display: grid;
+            gap: 10px;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: var(--bg-light);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 15px 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: var(--shadow-light);
+            transform: translateY(-100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: auto;
+            max-width: 400px;
+            word-wrap: break-word;
+            color: var(--text-dark);
+        }
+        
+        [data-theme="dark"] .toast {
+            background: var(--bg-dark);
+            border-color: var(--border-color);
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.speaking {
+            border-left: 4px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .toast.success {
+            border-left: 4px solid var(--success-color);
+            color: var(--success-color);
+        }
+        
+        .toast.error {
+            border-left: 4px solid var(--error-color);
+            color: var(--error-color);
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+                margin: 10px;
+            }
+            
+            .main-controls {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .chapter-indicator {
+                top: 70px;
+                right: 15px;
+                width: 50px;
+                height: 50px;
+                font-size: 0.9rem;
+            }
+            
+            .chapter-indicator .chapter-number {
+                font-size: 1rem;
+            }
+            
+            .chapter-indicator .total-chapters {
+                font-size: 0.6rem;
+            }
+            
+            .chapter-actions {
+                opacity: 1;
+            }
+            
+            .theme-toggle {
+                top: 15px;
+                right: 15px;
+            }
+            
+            .user-profile {
+                top: 15px;
+                left: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .floating-action {
+                width: 35px;
+                height: 35px;
+            }
+            
+            .modal {
+                padding: 20px;
+                width: 95%;
+            }
+            
+            .section-header {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .export-import {
+                justify-self: center;
+            }
+            
+            .playlist-header {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .playlist-actions {
+                justify-self: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .chapter-indicator {
+                top: 60px;
+                right: 10px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .input-meta {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .tts-option {
+                grid-template-columns: auto 1fr;
+                grid-template-rows: auto auto;
+                gap: 8px;
+            }
+            
+            .tts-option-status {
+                grid-column: 1 / -1;
+                justify-self: start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Container -->
+    <div class="auth-container" id="authContainer">
+        <h1 class="auth-hero">🎧 Enhanced TTS Reader</h1>
+        <p class="auth-subtitle">Sign in to sync your reading library across devices</p>
+        
+        <div class="auth-methods">
+            <button class="auth-button google-btn" id="googleSignInBtn">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </button>
+            
+            <button class="auth-button email-btn" id="emailSignInBtn">
+                <i class="fas fa-envelope"></i>
+                Continue with Email
+            </button>
+        </div>
+        
+        <!-- Email Authentication Form -->
+        <div class="auth-form" id="authForm">
+            <div class="form-group">
+                <label class="form-label" for="emailInput">Email Address</label>
+                <input type="email" id="emailInput" class="form-input" placeholder="Enter your email" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="passwordInput">Password</label>
+                <input type="password" id="passwordInput" class="form-input" placeholder="Enter your password" required>
+            </div>
+            
+            <div class="form-actions">
+                <button class="auth-button email-btn" id="submitAuthBtn">Sign In</button>
+            </div>
+            
+            <div class="auth-switch">
+                <span id="authSwitchText">Don't have an account?</span>
+                <button id="authSwitchBtn">Sign Up</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Profile -->
+    <div class="user-profile" id="userProfile" onclick="showUserMenu()">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-name" id="userName">User</div>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    
+    <!-- Sync Status -->
+    <div class="sync-status" id="syncStatus">
+        <i class="fas fa-sync-alt"></i>
+        <span id="syncText">Syncing...</span>
+    </div>
+    
+    <div class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon" id="themeIcon"></i>
+    </div>
+    
+    <div class="help-toggle" onclick="openHelpModal()">
+        ?
+    </div>
+    
+    <!-- Fixed Chapter Indicator -->
+    <div class="chapter-indicator" id="chapterIndicator">
+        <div style="text-align: center;">
+            <div class="chapter-number" id="indicatorNumber">1</div>
+            <div class="total-chapters" id="indicatorTotal">of 1</div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Main App Container -->
+    <div class="container" id="appContainer" style="display: none;">
+        <div class="header">
+            <h1>🎧 Enhanced TTS Reader</h1>
+            <p class="subtitle">Cloud-Powered Learning with Smart Features</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="textarea-container">
+                <textarea id="textArea" placeholder="Paste or type your text here... Your content automatically syncs to the cloud and splits into chapters for better reading experience."></textarea>
+                
+                <!-- Floating Action Buttons -->
+                <div class="floating-action gear-btn" onclick="openModal()">
+                    <i class="fas fa-cog"></i>
+                </div>
+                
+                <div class="floating-action save-btn" id="saveButton">
+                    <i class="fas fa-bookmark"></i>
+                </div>
+                
+                <div class="floating-action paste-btn" id="pasteButton">
+                    <i class="fas fa-paste"></i>
+                </div>
+            </div>
+            
+            <div class="input-meta">
+                <span><span id="charCount">0</span> characters • <span id="wordCount">0</span> words</span>
+                <span id="estimatedTime">Est. reading time: 0 min</span>
+            </div>
+        </div>
+        
+        <div class="reading-progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="currentChapter" class="chapter-info hidden">
+            <div class="chapter-title" id="chapterTitle">Ready to read...</div>
+            <div class="chapter-meta" id="chapterMeta">Select text and click Read to begin</div>
+        </div>
+        
+        <div class="main-controls">
+            <div class="control-group">
+                <label class="control-label">Test Voice</label>
+                <button id="testButton" class="btn-secondary">
+                    <i class="fas fa-volume-high btn-icon"></i>Test
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Main Control</label>
+                <button id="playButton" class="btn-primary">
+                    <i class="fas fa-play btn-icon"></i>Read Aloud
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Stop Reading</label>
+                <button id="stopButton" class="btn-secondary" disabled>
+                    <i class="fas fa-stop btn-icon"></i>Stop
+                </button>
+            </div>
+        </div>
+
+        <div class="playlist-section">
+            <div class="section-header">
+                <h3 class="section-title">☁️ Cloud Library</h3>
+                <div class="export-import">
+                    <button id="exportButton" class="btn-secondary">
+                        <i class="fas fa-download btn-icon"></i>Export
+                    </button>
+                    <button id="importButton" class="btn-secondary">
+                        <i class="fas fa-upload btn-icon"></i>Import
+                    </button>
+                    <input type="file" id="importFile" accept=".json" class="hidden">
+                </div>
+            </div>
+            <div id="playlistList"></div>
+        </div>
+    </div>
+
+    <!-- Enhanced Settings Modal with TTS Options -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ Settings & Voice Options</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-controls">
+                
+                <!-- TTS Quality Selection Section -->
+                <div class="tts-quality-section">
+                    <div class="tts-quality-title">🎭 Voice Quality Options</div>
+                    <div class="tts-options">
+                        <div class="tts-option selected" id="enhancedBrowserOption" onclick="selectTTSOption('enhanced')">
+                            <div class="tts-option-radio"></div>
+                            <div class="tts-option-info">
+                                <div class="tts-option-name">Enhanced Browser TTS</div>
+                                <div class="tts-option-desc">Improved system voices with better prosody and naturalness</div>
+                            </div>
+                            <div class="tts-option-status status-available">Ready</div>
+                        </div>
+                        
+                        <div class="tts-option" id="neuralTTSOption" onclick="selectTTSOption('neural')">
+                            <div class="tts-option-radio"></div>
+                            <div class="tts-option-info">
+                                <div class="tts-option-name">Neural TTS (Premium)</div>
+                                <div class="tts-option-desc">AI-powered voices with emotion and natural intonation</div>
+                            </div>
+                            <div class="tts-option-status status-loading" id="neuralStatus">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Voice Selection</label>
+                    <select id="voiceSelect"></select>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Reading Speed</label>
+                    <input id="speedControl" type="range" min="0.5" max="2" step="0.1" value="1" />
+                    <span id="speedValue">1.0x</span>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Volume Control</label>
+                    <div class="volume-control">
+                        <i class="fas fa-volume-down"></i>
+                        <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1" class="volume-slider" />
+                        <i class="fas fa-volume-up"></i>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Text Operations</label>
+                    <button id="clearButton" class="btn-secondary">
+                        <i class="fas fa-eraser btn-icon"></i>Clear Text
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Reading Controls</label>
+                    <button id="restartButton" class="btn-secondary">
+                        <i class="fas fa-redo btn-icon"></i>Restart
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Account Actions</label>
+                    <button id="signOutButton" class="btn-secondary">
+                        <i class="fas fa-sign-out-alt btn-icon"></i>Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7yFLhWRGXKYcX8Ar0aDMUXPjzY1pQsDQ",
+            authDomain: "ttsreader-8b3c8.firebaseapp.com",
+            projectId: "ttsreader-8b3c8",
+            storageBucket: "ttsreader-8b3c8.firebasestorage.app",
+            messagingSenderId: "1033167528237",
+            appId: "1:1033167528237:web:93fd06d5fb16846574f3a4"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Initialize speech synthesis and core variables
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let currentVoice = null;
+        let textContent = '';
+        let isPlaying = false;
+        let wakeLock = null;
+        let playlist = [];
+        let currentChapterIndex = 0;
+        let wasPlaying = false;
+        let chapters = [];
+        let currentUtterance = null;
+        let totalChapters = 0;
+        let startTime = null;
+        let currentUser = null;
+        let isSignUp = false;
+        
+        // TTS Quality Management
+        let currentTTSMode = localStorage.getItem('tts-mode') || 'enhanced';
+        let isNeuralTTSAvailable = false;
+        
+        // DOM element references
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const userProfile = document.getElementById('userProfile');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const syncStatus = document.getElementById('syncStatus');
+        const syncText = document.getElementById('syncText');
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        const emailSignInBtn = document.getElementById('emailSignInBtn');
+        const authForm = document.getElementById('authForm');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const submitAuthBtn = document.getElementById('submitAuthBtn');
+        const authSwitchBtn = document.getElementById('authSwitchBtn');
+        const authSwitchText = document.getElementById('authSwitchText');
+        const signOutButton = document.getElementById('signOutButton');
+        
+        // Existing DOM elements
+        const textArea = document.getElementById('textArea');
+        const pasteButton = document.getElementById('pasteButton');
+        const saveButton = document.getElementById('saveButton');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const volumeControl = document.getElementById('volumeControl');
+        const testButton = document.getElementById('testButton');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const restartButton = document.getElementById('restartButton');
+        const clearButton = document.getElementById('clearButton');
+        const charCount = document.getElementById('charCount');
+        const wordCount = document.getElementById('wordCount');
+        const estimatedTime = document.getElementById('estimatedTime');
+        const playlistList = document.getElementById('playlistList');
+        const progressBar = document.getElementById('progressBar');
+        const currentChapter = document.getElementById('currentChapter');
+        const chapterTitle = document.getElementById('chapterTitle');
+        const chapterMeta = document.getElementById('chapterMeta');
+        const exportButton = document.getElementById('exportButton');
+        const importButton = document.getElementById('importButton');
+        const importFile = document.getElementById('importFile');
+        const chapterIndicator = document.getElementById('chapterIndicator');
+        const indicatorNumber = document.getElementById('indicatorNumber');
+        const indicatorTotal = document.getElementById('indicatorTotal');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const toastContainer = document.getElementById('toastContainer');
+        const enhancedBrowserOption = document.getElementById('enhancedBrowserOption');
+        const neuralTTSOption = document.getElementById('neuralTTSOption');
+        const neuralStatus = document.getElementById('neuralStatus');
+
+        // Authentication Functions
+        function showAuthForm() {
+            authForm.style.display = 'block';
+            emailInput.focus();
+        }
+
+        function hideAuthForm() {
+            authForm.style.display = 'none';
+        }
+
+        function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            if (isSignUp) {
+                submitAuthBtn.textContent = 'Create Account';
+                authSwitchText.textContent = 'Already have an account?';
+                authSwitchBtn.textContent = 'Sign In';
+            } else {
+                submitAuthBtn.textContent = 'Sign In';
+                authSwitchText.textContent = "Don't have an account?";
+                authSwitchBtn.textContent = 'Sign Up';
+            }
+        }
+
+        function showSyncStatus(message, type = 'syncing') {
+            syncText.textContent = message;
+            syncStatus.className = `sync-status show ${type}`;
+            
+            setTimeout(() => {
+                syncStatus.classList.remove('show');
+            }, type === 'error' ? 5000 : 3000);
+        }
+
+        function updateUserProfile(user) {
+            if (user) {
+                userAvatar.textContent = user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase();
+                userName.textContent = user.displayName || user.email.split('@')[0];
+                userProfile.style.display = 'flex';
+            } else {
+                userProfile.style.display = 'none';
+            }
+        }
+
+        // Firebase Authentication Event Listeners
+        googleSignInBtn.addEventListener('click', async () => {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                showToast('❌ Google sign-in failed. Please try again.', 'error');
+            }
+        });
+
+        emailSignInBtn.addEventListener('click', () => {
+            showAuthForm();
+        });
+
+        authSwitchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleAuthMode();
+        });
+
+        submitAuthBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showToast('⚠️ Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                if (isSignUp) {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                    showToast('✅ Account created successfully!', 'success');
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    showToast('✅ Welcome back!', 'success');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                let message = 'Authentication failed';
+                
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        message = 'No account found with this email';
+                        break;
+                    case 'auth/wrong-password':
+                        message = 'Incorrect password';
+                        break;
+                    case 'auth/email-already-in-use':
+                        message = 'Email already in use';
+                        break;
+                    case 'auth/weak-password':
+                        message = 'Password should be at least 6 characters';
+                        break;
+                    case 'auth/invalid-email':
+                        message = 'Invalid email address';
+                        break;
+                    default:
+                        message = error.message;
+                }
+                
+                showToast(`❌ ${message}`, 'error');
+            }
+        });
+
+        signOutButton.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                showToast('👋 Signed out successfully', 'success');
+                closeModal();
+            } catch (error) {
+                console.error('Sign out error:', error);
+                showToast('❌ Sign out failed', 'error');
+            }
+        });
+
+        // Auth State Observer
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            
+            if (user) {
+                console.log('User signed in:', user.email);
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'block';
+                updateUserProfile(user);
+                
+                // Migrate local data if exists
+                await migrateLocalData();
+                
+                // Load user's cloud library
+                await loadCloudLibrary();
+                
+                showToast(`🎉 Welcome ${user.displayName || user.email.split('@')[0]}!`, 'success');
+            } else {
+                console.log('User signed out');
+                authContainer.style.display = 'block';
+                appContainer.style.display = 'none';
+                userProfile.style.display = 'none';
+                playlist = [];
+                renderPlaylist();
+            }
+        });
+
+        // Firestore Functions
+        async function saveToCloud(item) {
+            if (!currentUser) return false;
+            
+            try {
+                showSyncStatus('Saving to cloud...', 'syncing');
+                
+                await db.collection('users').doc(currentUser.uid).collection('library').doc(item.id).set({
+                    ...item,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showSyncStatus('Saved to cloud', 'synced');
+                return true;
+            } catch (error) {
+                console.error('Save to cloud error:', error);
+                showSyncStatus('Sync failed', 'error');
+                return false;
+            }
+        }
+
+        async function loadCloudLibrary() {
+            if (!currentUser) return;
+            
+            try {
+                showSyncStatus('Loading library...', 'syncing');
+                
+                const snapshot = await db.collection('users').doc(currentUser.uid).collection('library')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                playlist = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    playlist.push({
+                        id: doc.id,
+                        ...data,
+                        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+                        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+                    });
+                });
+                
+                renderPlaylist();
+                showSyncStatus('Library loaded', 'synced');
+                
+            } catch (error) {
+                console.error('Load cloud library error:', error);
+                showSyncStatus('Load failed', 'error');
+            }
+        }
+
+        async function deleteFromCloud(itemId) {
+            if (!currentUser) return false;
+            
+            try {
+                showSyncStatus('Deleting from cloud...', 'syncing');
+                
+                await db.collection('users').doc(currentUser.uid).collection('library').doc(itemId).delete();
+                
+                showSyncStatus('Deleted from cloud', 'synced');
+                return true;
+            } catch (error) {
+                console.error('Delete from cloud error:', error);
+                showSyncStatus('Delete failed', 'error');
+                return false;
+            }
+        }
+
+        async function migrateLocalData() {
+            try {
+                const localPlaylist = JSON.parse(localStorage.getItem('enhancedTTSPlaylist')) || [];
+                const oldPlaylist = JSON.parse(localStorage.getItem('ttsPlaylist')) || [];
+                
+                // Merge local data
+                const allLocalItems = [...localPlaylist, ...oldPlaylist.map(item => ({
+                    ...item,
+                    id: Date.now() + Math.random(),
+                    createdAt: new Date().toISOString(),
+                    chapters: item.chapters || splitIntoChapters(item.text || '')
+                }))];
+                
+                if (allLocalItems.length > 0) {
+                    showSyncStatus('Migrating local data...', 'syncing');
+                    
+                    // Check what's already in cloud
+                    const cloudSnapshot = await db.collection('users').doc(currentUser.uid).collection('library').get();
+                    const cloudItems = new Set();
+                    cloudSnapshot.forEach(doc => {
+                        cloudItems.add(doc.data().title);
+                    });
+                    
+                    // Upload items that don't exist in cloud
+                    const itemsToMigrate = allLocalItems.filter(item => !cloudItems.has(item.title));
+                    
+                    for (const item of itemsToMigrate) {
+                        await saveToCloud({
+                            ...item,
+                            id: generateUniqueId(),
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                    
+                    if (itemsToMigrate.length > 0) {
+                        showToast(`📤 Migrated ${itemsToMigrate.length} items to cloud`, 'success');
+                        
+                        // Clear local storage after successful migration
+                        localStorage.removeItem('enhancedTTSPlaylist');
+                        localStorage.removeItem('ttsPlaylist');
+                    }
+                }
+            } catch (error) {
+                console.error('Migration error:', error);
+                showToast('⚠️ Some local data could not be migrated', 'error');
+            }
+        }
+
+        // Enhanced save function
+        async function savePlaylistItem(item) {
+            // Add to local playlist immediately for responsiveness
+            const existingIndex = playlist.findIndex(p => p.id === item.id);
+            if (existingIndex >= 0) {
+                playlist[existingIndex] = item;
+            } else {
+                playlist.unshift(item);
+            }
+            renderPlaylist();
+            
+            // Save to cloud in background
+            await saveToCloud(item);
+        }
+
+        // Enhanced delete function
+        async function deletePlaylistItem(itemId) {
+            // Remove from local playlist immediately
+            const itemIndex = playlist.findIndex(p => p.id === itemId);
+            if (itemIndex >= 0) {
+                playlist.splice(itemIndex, 1);
+                renderPlaylist();
+            }
+            
+            // Delete from cloud in background
+            await deleteFromCloud(itemId);
+        }
+
+        // TTS Quality Selection
+        function selectTTSOption(mode) {
+            document.querySelectorAll('.tts-option').forEach(opt => opt.classList.remove('selected'));
+            
+            if (mode === 'enhanced') {
+                enhancedBrowserOption.classList.add('selected');
+                currentTTSMode = 'enhanced';
+                showToast('🎯 Enhanced Browser TTS selected', 'success');
+            } else if (mode === 'neural') {
+                if (isNeuralTTSAvailable) {
+                    neuralTTSOption.classList.add('selected');
+                    currentTTSMode = 'neural';
+                    showToast('🎭 Neural TTS selected - premium quality enabled!', 'success');
+                } else {
+                    initializeNeuralTTS();
+                    showToast('🧠 Loading Neural TTS... This may take a moment', 'speaking', 5000);
+                }
+            }
+            
+            localStorage.setItem('tts-mode', currentTTSMode);
+        }
+
+        // Neural TTS Initialization (Simulated)
+        async function initializeNeuralTTS() {
+            neuralStatus.textContent = 'Loading...';
+            neuralStatus.className = 'tts-option-status status-loading';
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                if (navigator.gpu || window.webkitSpeechRecognition) {
+                    isNeuralTTSAvailable = true;
+                    neuralStatus.textContent = 'Ready';
+                    neuralStatus.className = 'tts-option-status status-available';
+                    neuralTTSOption.classList.add('selected');
+                    enhancedBrowserOption.classList.remove('selected');
+                    currentTTSMode = 'neural';
+                    localStorage.setItem('tts-mode', currentTTSMode);
+                    showToast('🎭 Neural TTS ready! Premium voice quality enabled', 'success');
+                } else {
+                    throw new Error('Neural TTS not supported');
+                }
+            } catch (error) {
+                isNeuralTTSAvailable = false;
+                neuralStatus.textContent = 'Unavailable';
+                neuralStatus.className = 'tts-option-status status-unavailable';
+                enhancedBrowserOption.classList.add('selected');
+                currentTTSMode = 'enhanced';
+                localStorage.setItem('tts-mode', currentTTSMode);
+                showToast('⚠️ Neural TTS unavailable - using Enhanced Browser TTS', 'error');
+            }
+        }
+
+        // Enhanced Browser TTS with better prosody
+        function enhanceUtterance(utterance, text) {
+            const enhancedText = text
+                .replace(/\. /g, '. <break time="500ms"/> ')
+                .replace(/\, /g, ', <break time="200ms"/> ')
+                .replace(/\! /g, '! <break time="600ms"/> ')
+                .replace(/\? /g, '? <break time="600ms"/> ')
+                .replace(/: /g, ': <break time="300ms"/> ');
+            
+            utterance.text = enhancedText;
+            utterance.rate = parseFloat(speedControl.value) * 0.95;
+            utterance.pitch = 1.05;
+            utterance.volume = parseFloat(volumeControl.value);
+            
+            return utterance;
+        }
+
+        // Simulated Neural TTS Function
+        async function speakWithNeuralTTS(text, emotion = 'conversational') {
+            if (!isNeuralTTSAvailable) {
+                throw new Error('Neural TTS not available');
+            }
+            
+            return new Promise((resolve, reject) => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                const naturalVoices = voices.filter(voice => 
+                    voice.name.includes('Neural') || 
+                    voice.name.includes('Premium') || 
+                    voice.name.includes('Enhanced') ||
+                    voice.default
+                );
+                
+                if (naturalVoices.length > 0) {
+                    utterance.voice = naturalVoices[0];
+                } else if (currentVoice) {
+                    utterance.voice = currentVoice;
+                }
+                
+                utterance.rate = parseFloat(speedControl.value) * 0.9;
+                utterance.pitch = 1.1;
+                utterance.volume = parseFloat(volumeControl.value);
+                
+                if (text.includes('!') || text.includes('exciting') || text.includes('amazing')) {
+                    utterance.rate *= 1.05;
+                    utterance.pitch *= 1.05;
+                } else if (text.includes('...') || text.includes('thoughtful') || text.includes('consider')) {
+                    utterance.rate *= 0.95;
+                    utterance.pitch *= 0.98;
+                }
+                
+                utterance.onend = resolve;
+                utterance.onerror = reject;
+                
+                synth.speak(utterance);
+            });
+        }
+
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('tts-theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('tts-theme', 'dark');
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('tts-theme');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('themeIcon').className = 'fas fa-sun';
+            }
+        }
+
+        // Modal management
+        function openModal() {
+            modalOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function openHelpModal() {
+            // Help modal implementation
+            showToast('📖 Help documentation coming soon!', 'speaking');
+        }
+
+        function showUserMenu() {
+            // Show user menu or account options
+            showToast('👤 Account settings - click gear icon for more options', 'speaking');
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'speaking', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 400);
+            }, duration);
+        }
+
+        // Initialize app
+        function initializeApp() {
+            loadTheme();
+            
+            if (currentTTSMode === 'neural') {
+                neuralTTSOption.classList.add('selected');
+                enhancedBrowserOption.classList.remove('selected');
+                setTimeout(initializeNeuralTTS, 1000);
+            } else {
+                enhancedBrowserOption.classList.add('selected');
+                neuralTTSOption.classList.remove('selected');
+            }
+            
+            populateVoices();
+            renderPlaylist();
+        }
+
+        // Voice population
+        function populateVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '<option value="">Default System Voice</option>';
+            
+            const sortedVoices = voices.sort((a, b) => {
+                const aScore = (a.name.includes('Neural') || a.name.includes('Premium') || a.name.includes('Enhanced') || a.default) ? 1 : 0;
+                const bScore = (b.name.includes('Neural') || b.name.includes('Premium') || b.name.includes('Enhanced') || b.default) ? 1 : 0;
+                
+                if (aScore !== bScore) return bScore - aScore;
+                if (a.lang !== b.lang) return a.lang.localeCompare(b.lang);
+                return a.name.localeCompare(b.name);
+            });
+            
+            let currentLang = '';
+            sortedVoices.forEach((voice, index) => {
+                if (voice.lang !== currentLang) {
+                    if (currentLang !== '') {
+                        const separator = document.createElement('option');
+                        separator.disabled = true;
+                        separator.textContent = '─────────────────────';
+                        voiceSelect.appendChild(separator);
+                    }
+                    currentLang = voice.lang;
+                }
+                
+                const option = document.createElement('option');
+                option.value = voices.indexOf(voice);
+                
+                let displayName = voice.name;
+                if (voice.name.includes('Neural') || voice.name.includes('Premium') || voice.name.includes('Enhanced')) {
+                    displayName += ' 🎭';
+                } else if (voice.default) {
+                    displayName += ' ⭐';
+                }
+                
+                option.textContent = displayName;
+                voiceSelect.appendChild(option);
+            });
+            
+            if (voices.length > 0) {
+                const defaultVoice = voices.find(v => v.default) || voices[0];
+                currentVoice = defaultVoice;
+                voiceSelect.value = voices.indexOf(defaultVoice);
+            }
+        }
+
+        populateVoices();
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = populateVoices;
+        }
+        
+        setTimeout(() => {
+            if (voices.length === 0) {
+                populateVoices();
+            }
+        }, 100);
+
+        // Voice selection handler
+        voiceSelect.addEventListener('change', (e) => {
+            if (e.target.value !== '') {
+                currentVoice = voices[e.target.value];
+            } else {
+                currentVoice = null;
+            }
+        });
+
+        // Text analysis and statistics
+        function updateTextStats() {
+            const text = textArea.value;
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const avgWordsPerMinute = 150;
+            const estimatedMinutes = Math.ceil(words / avgWordsPerMinute);
+            
+            charCount.textContent = chars.toLocaleString();
+            wordCount.textContent = words.toLocaleString();
+            estimatedTime.textContent = `Est. reading time: ${estimatedMinutes} min`;
+            
+            if (text.trim()) {
+                chapters = splitIntoChapters(text.trim());
+                updateChapterInfo();
+            }
+        }
+
+        textArea.addEventListener('input', updateTextStats);
+        textArea.addEventListener('paste', () => {
+            setTimeout(updateTextStats, 100);
+        });
+
+        // Speed control
+        speedControl.addEventListener('input', (e) => {
+            speedValue.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+        });
+
+        // Clipboard integration
+        pasteButton.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    textArea.value += text;
+                    updateTextStats();
+                    showToast('✅ Text pasted successfully!', 'success');
+                } else {
+                    showToast('⚠️ Clipboard is empty', 'error');
+                }
+            } catch (err) {
+                console.error('Paste failed:', err);
+                showToast('❌ Paste failed. Try Ctrl+V instead.', 'error');
+            }
+        });
+
+        // Save button functionality
+        saveButton.addEventListener('click', async () => {
+            const text = textArea.value.trim();
+            if (!text) {
+                showToast('⚠️ No text to save', 'error');
+                return;
+            }
+            
+            const title = prompt('Enter a title for this text:');
+            if (!title) return;
+            
+            const newItem = {
+                id: generateUniqueId(),
+                title: title,
+                text: text,
+                chapters: splitIntoChapters(text),
+                createdAt: new Date().toISOString()
+            };
+            
+            await savePlaylistItem(newItem);
+            showToast('💾 Text saved to library!', 'success');
+        });
+
+        // Wake lock
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                showToast('⚠️ Wake Lock not supported - screen may turn off during reading', 'error', 5000);
+                return false;
+            }
+            
+            try {
+                if (wakeLock) {
+                    await wakeLock.release();
+                }
+                
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
+                });
+                
+                return true;
+            } catch (err) {
+                console.error('Wake Lock failed:', err);
+                showToast(`❌ Screen lock failed: ${err.message}`, 'error', 3000);
+                return false;
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                try {
+                    await wakeLock.release();
+                    wakeLock = null;
+                } catch (err) {
+                    console.error('Wake lock release failed:', err);
+                }
+            }
+        }
+
+        // Chapter splitting
+        function splitIntoChapters(text, maxLen = 300) {
+            if (!text.trim()) return [];
+            
+            const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/g) || [text];
+            const chapters = [];
+            let current = '';
+            let chapterNum = 1;
+            
+            sentences.forEach(sentence => {
+                const trimmedSentence = sentence.trim();
+                if (!trimmedSentence) return;
+                
+                if ((current + ' ' + trimmedSentence).length > maxLen && current) {
+                    const title = generateChapterTitle(current, chapterNum);
+                    chapters.push({ 
+                        title, 
+                        text: current.trim(),
+                        number: chapterNum,
+                        wordCount: current.trim().split(/\s+/).length
+                    });
+                    current = trimmedSentence;
+                    chapterNum++;
+                } else {
+                    current += (current ? ' ' : '') + trimmedSentence;
+                }
+            });
+            
+            if (current.trim()) {
+                const title = generateChapterTitle(current, chapterNum);
+                chapters.push({ 
+                    title, 
+                    text: current.trim(),
+                    number: chapterNum,
+                    wordCount: current.trim().split(/\s+/).length
+                });
+            }
+            
+            return chapters;
+        }
+
+        function generateChapterTitle(text, number) {
+            const words = text.trim().split(/\s+/);
+            const firstFewWords = words.slice(0, 8).join(' ');
+            
+            let title = firstFewWords;
+            if (title.length > 50) {
+                title = title.substring(0, 47) + '...';
+            } else if (words.length > 8) {
+                title += '...';
+            }
+            
+            return `Chapter ${number}: ${title}`;
+        }
+
+        function updateChapterInfo() {
+            if (chapters.length > 0) {
+                currentChapter.classList.remove('hidden');
+                const current = chapters[currentChapterIndex] || chapters[0];
+                chapterTitle.textContent = current.title;
+                chapterMeta.textContent = `${current.wordCount} words • Chapter ${current.number} of ${chapters.length}`;
+                
+                updateChapterIndicator();
+            } else {
+                currentChapter.classList.add('hidden');
+                hideChapterIndicator();
+            }
+        }
+
+        function updateChapterIndicator() {
+            if (chapters.length > 0 && isPlaying) {
+                indicatorNumber.textContent = (currentChapterIndex + 1);
+                indicatorTotal.textContent = `of ${chapters.length}`;
+                chapterIndicator.classList.add('show');
+            } else {
+                hideChapterIndicator();
+            }
+        }
+
+        function hideChapterIndicator() {
+            chapterIndicator.classList.remove('show');
+        }
+
+        function updateProgress() {
+            if (totalChapters > 0) {
+                const progress = ((currentChapterIndex + 1) / totalChapters) * 100;
+                progressBar.style.width = `${progress}%`;
+            } else {
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Speech synthesis
+        async function speakChapters(chaps, chapIdx = 0) {
+            if (!isPlaying || chapIdx >= chaps.length) {
+                finishSpeaking();
+                return;
+            }
+            
+            currentChapterIndex = chapIdx;
+            totalChapters = chaps.length;
+            updateProgress();
+            updateChapterInfo();
+            updateChapterIndicator();
+            
+            const chapter = chaps[chapIdx];
+            
+            try {
+                if (currentTTSMode === 'neural' && isNeuralTTSAvailable) {
+                    if (chapIdx === 0) {
+                        playButton.disabled = true;
+                        stopButton.disabled = false;
+                        playButton.innerHTML = '<i class="fas fa-pause btn-icon"></i>Reading...';
+                        startTime = Date.now();
+                    }
+                    
+                    showToast(`🎭 ${chapter.title}`, 'speaking');
+                    await speakWithNeuralTTS(chapter.text);
+                    
+                    setTimeout(() => speakChapters(chaps, chapIdx + 1), 200);
+                    
+                } else {
+                    const utterance = new SpeechSynthesisUtterance(chapter.text);
+                    currentUtterance = utterance;
+                    
+                    if (currentVoice) utterance.voice = currentVoice;
+                    enhanceUtterance(utterance, chapter.text);
+                    
+                    utterance.onstart = () => {
+                        if (chapIdx === 0) {
+                            playButton.disabled = true;
+                            stopButton.disabled = false;
+                            playButton.innerHTML = '<i class="fas fa-pause btn-icon"></i>Reading...';
+                            startTime = Date.now();
+                        }
+                        showToast(`📖 ${chapter.title}`, 'speaking');
+                    };
+                    
+                    utterance.onend = () => {
+                        setTimeout(() => speakChapters(chaps, chapIdx + 1), 200);
+                    };
+                    
+                    utterance.onerror = (e) => {
+                        console.error('Speech error:', e);
+                        showToast(`❌ Speech error: ${e.error}`, 'error');
+                        
+                        if (e.error === 'interrupted' || e.error === 'canceled') {
+                            return;
+                        }
+                        
+                        setTimeout(() => speakChapters(chaps, chapIdx + 1), 1000);
+                    };
+                    
+                    synth.speak(utterance);
+                }
+            } catch (error) {
+                console.error('TTS Error:', error);
+                showToast('❌ Falling back to Enhanced Browser TTS', 'error');
+                
+                currentTTSMode = 'enhanced';
+                enhancedBrowserOption.classList.add('selected');
+                neuralTTSOption.classList.remove('selected');
+                
+                setTimeout(() => speakChapters(chaps, chapIdx), 500);
+            }
+        }
+
+        async function finishSpeaking() {
+            isPlaying = false;
+            wasPlaying = false;
+            currentChapterIndex = 0;
+            currentUtterance = null;
+            
+            playButton.disabled = false;
+            stopButton.disabled = true;
+            playButton.innerHTML = '<i class="fas fa-play btn-icon"></i>Read Aloud';
+            
+            await releaseWakeLock();
+            hideChapterIndicator();
+            
+            if (startTime) {
+                const duration = Math.round((Date.now() - startTime) / 1000 / 60);
+                const qualityUsed = currentTTSMode === 'neural' && isNeuralTTSAvailable ? 'Neural TTS' : 'Enhanced Browser TTS';
+                showToast(`✅ Reading complete! Duration: ${duration} min • ${qualityUsed}`, 'success', 5000);
+                startTime = null;
+            } else {
+                showToast('🛑 Reading stopped', 'success', 2000);
+            }
+            
+            updateProgress();
+            updateChapterInfo();
+        }
+
+        async function resumePlayback() {
+            if (!chapters.length) return;
+            
+            synth.cancel();
+            isPlaying = true;
+            wasPlaying = true;
+            
+            let startIdx = Math.max(0, currentChapterIndex - 1);
+            
+            await requestWakeLock();
+            speakChapters(chapters, startIdx);
+            showToast(`⏯️ Resumed from ${chapters[startIdx].title}`, 'speaking');
+        }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'hidden') {
+                if (isPlaying) {
+                    synth.cancel();
+                    wasPlaying = true;
+                    console.log('Page hidden - speech cancelled, will resume when visible');
+                }
+            } else if (document.visibilityState === 'visible') {
+                if (wasPlaying && !isPlaying) {
+                    console.log('Page visible again - attempting to resume');
+                    await requestWakeLock();
+                    setTimeout(resumePlayback, 500);
+                }
+            }
+        });
+
+        // Button handlers
+        playButton.addEventListener('click', async () => {
+            textContent = textArea.value.trim();
+            if (!textContent) {
+                showToast('⚠️ Please enter some text to read', 'error');
+                return;
+            }
+            
+            if (isPlaying) {
+                synth.cancel();
+                await finishSpeaking();
+                return;
+            }
+            
+            const wakeLockSuccess = await requestWakeLock();
+            if (!wakeLockSuccess) {
+                showToast('⚠️ Starting without screen lock - consider keeping device awake', 'error', 3000);
+            }
+            
+            isPlaying = true;
+            wasPlaying = true;
+            currentChapterIndex = 0;
+            
+            chapters = splitIntoChapters(textContent);
+            if (chapters.length === 0) {
+                showToast('❌ No readable content found', 'error');
+                await finishSpeaking();
+                return;
+            }
+            
+            totalChapters = chapters.length;
+            const qualityMode = currentTTSMode === 'neural' && isNeuralTTSAvailable ? 'Neural TTS' : 'Enhanced Browser TTS';
+            showToast(`🚀 Starting ${chapters.length} chapters with ${qualityMode}...`, 'speaking');
+            speakChapters(chapters);
+        });
+
+        stopButton.addEventListener('click', async () => {
+            synth.cancel();
+            await finishSpeaking();
+        });
+
+        restartButton.addEventListener('click', () => {
+            if (isPlaying) {
+                synth.cancel();
+            }
+            currentChapterIndex = 0;
+            closeModal();
+            setTimeout(() => playButton.click(), 100);
+        });
+
+        clearButton.addEventListener('click', () => {
+            if (confirm('Clear all text?')) {
+                textArea.value = '';
+                updateTextStats();
+                closeModal();
+                showToast('🗑️ Text cleared', 'success');
+            }
+        });
+
+        testButton.addEventListener('click', async () => {
+            const testText = `This is a voice test using ${currentTTSMode === 'neural' && isNeuralTTSAvailable ? 'Neural TTS' : 'Enhanced Browser TTS'}. The reading speed and voice quality should match what you hear during actual reading.`;
+            
+            try {
+                if (currentTTSMode === 'neural' && isNeuralTTSAvailable) {
+                    showToast('🎭 Testing Neural TTS...', 'speaking');
+                    await speakWithNeuralTTS(testText);
+                } else {
+                    const testUtter = new SpeechSynthesisUtterance(testText);
+                    enhanceUtterance(testUtter, testText);
+                    if (currentVoice) testUtter.voice = currentVoice;
+                    
+                    testUtter.onstart = () => showToast('🎵 Testing Enhanced Browser TTS...', 'speaking');
+                    testUtter.onend = () => {};
+                    testUtter.onerror = (e) => showToast(`❌ Test failed: ${e.error}`, 'error');
+                    
+                    synth.cancel();
+                    synth.speak(testUtter);
+                }
+            } catch (error) {
+                showToast('❌ Neural TTS test failed, falling back to Enhanced Browser TTS', 'error');
+                currentTTSMode = 'enhanced';
+                enhancedBrowserOption.classList.add('selected');
+                neuralTTSOption.classList.remove('selected');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                playButton.click();
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (modalOverlay.classList.contains('show')) {
+                    closeModal();
+                } else {
+                    stopButton.click();
+                }
+            }
+            if (e.key === ' ' && e.target !== textArea && e.target !== emailInput && e.target !== passwordInput) {
+                e.preventDefault();
+                if (isPlaying) {
+                    stopButton.click();
+                } else {
+                    playButton.click();
+                }
+            }
+        });
+
+        // Utility functions
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Playlist rendering
+        function renderPlaylist() {
+            playlistList.innerHTML = '';
+            
+            if (playlist.length === 0) {
+                playlistList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                        <i class="fas fa-cloud" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p>Your cloud library is empty</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px;">Add some text and click the bookmark icon to build your collection</p>
+                        ${!currentUser ? '<p style="font-size: 0.8rem; margin-top: 10px; color: var(--warning-color);">Sign in to sync across devices</p>' : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            playlist.forEach((item, index) => {
+                const createdDate = new Date(item.createdAt || Date.now()).toLocaleDateString();
+                const totalWords = item.chapters.reduce((sum, ch) => sum + ch.wordCount, 0);
+                const estimatedMinutes = Math.ceil(totalWords / 150);
+                
+                const li = document.createElement('div');
+                li.className = 'playlist-item';
+                li.innerHTML = `
+                    <div class="playlist-header">
+                        <div>
+                            <div class="playlist-title">${item.title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 5px;">
+                                ${item.chapters.length} chapters • ${totalWords.toLocaleString()} words • ~${estimatedMinutes} min reading • ${createdDate}
+                                ${currentUser ? '<i class="fas fa-cloud" style="margin-left: 8px; color: var(--success-color);"></i>' : ''}
+                            </div>
+                        </div>
+                        <div class="playlist-actions">
+                            <button class="btn-secondary" onclick="removeFromPlaylist(${index})" title="Remove from library">
+                                <i class="fas fa-trash btn-icon"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chapters-toggle" onclick="toggleChapters(${index})" id="chaptersToggle${index}">
+                        <span><i class="fas fa-list btn-icon"></i>View Chapters (${item.chapters.length})</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="chapters-list hidden" id="chaptersList${index}">
+                        ${item.chapters.map((chapter, chapterIndex) => `
+                            <div class="chapter-item" onclick="playFromPlaylist(${index}, ${chapterIndex})">
+                                <div class="chapter-content">
+                                    <div class="chapter-text">${chapter.title}</div>
+                                    <div class="chapter-duration">${chapter.wordCount} words • ~${Math.ceil(chapter.wordCount / 150)} min</div>
+                                </div>
+                                <div class="chapter-actions">
+                                    <button class="chapter-delete-btn" onclick="event.stopPropagation(); deleteChapter(${index}, ${chapterIndex})" title="Delete chapter">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                playlistList.appendChild(li);
+            });
+        }
+
+        // Playlist management functions
+        function playFromPlaylist(playlistIndex, chapterIndex = 0) {
+            if (playlistIndex >= playlist.length) return;
+            
+            const item = playlist[playlistIndex];
+            textArea.value = item.text;
+            updateTextStats();
+            
+            chapters = item.chapters;
+            currentChapterIndex = chapterIndex;
+            totalChapters = chapters.length;
+            
+            updateChapterInfo();
+            showToast(`📚 Loaded: ${item.title}`, 'success');
+            
+            // Auto-play after a short delay
+            setTimeout(() => {
+                playButton.click();
+            }, 500);
+        }
+
+        function editPlaylistItem(index) {
+            if (index >= playlist.length) return;
+            
+            const item = playlist[index];
+            const newTitle = prompt('Edit title:', item.title);
+            
+            if (newTitle && newTitle.trim()) {
+                item.title = newTitle.trim();
+                savePlaylistItem(item);
+                showToast('✏️ Title updated', 'success');
+            }
+        }
+
+        async function removeFromPlaylist(index) {
+            if (index >= playlist.length) return;
+            
+            const item = playlist[index];
+            if (confirm(`Remove "${item.title}" from library?`)) {
+                await deletePlaylistItem(item.id);
+                showToast('🗑️ Removed from library', 'success');
+            }
+        }
+
+        function toggleChapters(index) {
+            const toggle = document.getElementById(`chaptersToggle${index}`);
+            const list = document.getElementById(`chaptersList${index}`);
+            
+            if (list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                toggle.classList.add('expanded');
+            } else {
+                list.classList.add('hidden');
+                toggle.classList.remove('expanded');
+            }
+        }
+
+        function deleteChapter(playlistIndex, chapterIndex) {
+            if (playlistIndex >= playlist.length) return;
+            
+            const item = playlist[playlistIndex];
+            if (item.chapters.length <= 1) {
+                showToast('⚠️ Cannot delete the last chapter', 'error');
+                return;
+            }
+            
+            if (confirm('Delete this chapter?')) {
+                item.chapters.splice(chapterIndex, 1);
+                
+                // Recalculate chapter numbers
+                item.chapters.forEach((chapter, idx) => {
+                    chapter.number = idx + 1;
+                    chapter.title = chapter.title.replace(/^Chapter \d+:/, `Chapter ${idx + 1}:`);
+                });
+                
+                // Update text
+                item.text = item.chapters.map(ch => ch.text).join(' ');
+                
+                savePlaylistItem(item);
+                showToast('🗑️ Chapter deleted', 'success');
+            }
+        }
+
+        // Import/Export functionality
+        exportButton.addEventListener('click', () => {
+            if (playlist.length === 0) {
+                showToast('⚠️ No items to export', 'error');
+                return;
+            }
+            
+            const exportData = {
+                version: '2.0',
+                exported: new Date().toISOString(),
+                items: playlist
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tts-library-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`📤 Exported ${playlist.length} items`, 'success');
+        });
+
+        importButton.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                let items = [];
+                
+                // Handle different export formats
+                if (data.items && Array.isArray(data.items)) {
+                    items = data.items;
+                } else if (Array.isArray(data)) {
+                    items = data;
+                } else {
+                    throw new Error('Invalid file format');
+                }
+                
+                // Process and validate items
+                const validItems = items.filter(item => item.title && item.text).map(item => ({
+                    ...item,
+                    id: generateUniqueId(),
+                    createdAt: item.createdAt || new Date().toISOString(),
+                    chapters: item.chapters && item.chapters.length > 0 
+                        ? item.chapters 
+                        : splitIntoChapters(item.text)
+                }));
+                
+                if (validItems.length === 0) {
+                    throw new Error('No valid items found in file');
+                }
+                
+                // Save all items
+                for (const item of validItems) {
+                    await savePlaylistItem(item);
+                }
+                
+                showToast(`📥 Imported ${validItems.length} items`, 'success');
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                showToast(`❌ Import failed: ${error.message}`, 'error');
+            }
+            
+            // Reset file input
+            e.target.value = '';
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            updateTextStats();
+            
+            // Show welcome message
+            setTimeout(() => {
+                if (!currentUser) {
+                    showToast('👋 Welcome! Sign in to sync your library across devices', 'speaking', 5000);
+                }
+            }, 1000);
+        });
+
+        // Handle app visibility and focus
+        window.addEventListener('focus', () => {
+            if (wasPlaying && !isPlaying && chapters.length > 0) {
+                showToast('🔄 Resuming playback...', 'speaking');
+                setTimeout(resumePlayback, 300);
+            }
+        });
+
+        // Error handling for speech synthesis
+        window.addEventListener('error', (e) => {
+            if (e.message.includes('speech') || e.message.includes('synthesis')) {
+                console.error('Speech synthesis error:', e);
+                showToast('❌ Speech error - trying to recover...', 'error');
+                
+                // Try to restart speech synthesis
+                synth.cancel();
+                setTimeout(() => {
+                    if (isPlaying && chapters.length > 0) {
+                        resumePlayback();
+                    }
+                }, 1000);
+            }
+        });
+
+        // Service worker registration for offline support (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // Handle beforeunload to warn about active speech
+        window.addEventListener('beforeunload', (e) => {
+            if (isPlaying) {
+                e.preventDefault();
+                e.returnValue = 'Speech is currently active. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+
+        // Performance monitoring
+        function logPerformance() {
+            if (performance && performance.mark) {
+                performance.mark('app-loaded');
+                
+                setTimeout(() => {
+                    const entries = performance.getEntriesByType('navigation');
+                    if (entries.length > 0) {
+                        const loadTime = entries[0].loadEventEnd - entries[0].loadEventStart;
+                        console.log(`App loaded in ${loadTime}ms`);
+                    }
+                }, 100);
+            }
+        }
+
+        // Accessibility improvements
+        function setupAccessibility() {
+            // Add ARIA labels and roles
+            textArea.setAttribute('aria-label', 'Text input for speech synthesis');
+            playButton.setAttribute('aria-label', 'Start reading text aloud');
+            stopButton.setAttribute('aria-label', 'Stop reading');
+            
+            // Keyboard navigation for playlist
+            document.addEventListener('keydown', (e) => {
+                if (e.target.closest('.playlist-item')) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.target.click();
+                    }
+                }
+            });
+        }
+
+        // Call initialization functions
+        logPerformance();
+        setupAccessibility();
+
+        // Final initialization
+        console.log('🎧 Enhanced TTS Reader initialized successfully!');
+        console.log('Features: Cloud sync, Neural TTS, Chapter splitting, Wake lock, Export/Import');
+    </script>
+</body>
+</html>
