@@ -994,6 +994,9 @@
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
                 showToast(`Welcome ${user.email.split('@')[0]}! 👋`, 'success');
+                
+                // Debug: Check both collection structures
+                checkDataSources();
                 loadUserData(); // Load user's cloud library
             } else {
                 authContainer.classList.remove('hidden');
@@ -1002,6 +1005,73 @@
                 document.getElementById('libraryContent').innerHTML = '';
             }
         });
+
+        async function checkDataSources() {
+            if (!currentUser) return;
+            
+            try {
+                console.log('=== DEBUGGING DATA SOURCES ===');
+                console.log('User ID:', currentUser.uid);
+                
+                // Check original structure: users/{userId}/library
+                const librarySnapshot = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('library')
+                    .limit(5)
+                    .get();
+                console.log('Library collection docs:', librarySnapshot.docs.length);
+                
+                // Check flat structure: documents
+                const documentsSnapshot = await db.collection('documents')
+                    .where('userId', '==', currentUser.uid)
+                    .limit(5)
+                    .get();
+                console.log('Documents collection docs:', documentsSnapshot.docs.length);
+                
+                // If no data in library but data in documents, migrate it
+                if (librarySnapshot.docs.length === 0 && documentsSnapshot.docs.length > 0) {
+                    console.log('Found data in documents collection, migrating...');
+                    await migrateFromDocuments();
+                }
+                
+            } catch (error) {
+                console.error('Debug check error:', error);
+            }
+        }
+
+        async function migrateFromDocuments() {
+            try {
+                const snapshot = await db.collection('documents')
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const newDocId = data.id || doc.id;
+                    
+                    const migratedData = {
+                        id: newDocId,
+                        title: data.title,
+                        content: data.content,
+                        chapters: data.chapters,
+                        wordCount: data.wordCount,
+                        createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users')
+                        .doc(currentUser.uid)
+                        .collection('library')
+                        .doc(newDocId)
+                        .set(migratedData);
+                }
+                
+                showToast(`Migrated ${snapshot.docs.length} documents!`, 'success');
+                console.log(`Migrated ${snapshot.docs.length} documents from flat structure`);
+            } catch (error) {
+                console.error('Migration error:', error);
+            }
+        }
 
         // Text Analysis
         function analyzeText() {
@@ -1170,17 +1240,23 @@
             }
             
             try {
+                const docId = Date.now().toString(); // Simple ID generation
                 const docData = {
+                    id: docId,
                     title: currentText.substring(0, 50) + (currentText.length > 50 ? '...' : ''),
                     content: currentText,
                     chapters: chapters.length,
                     wordCount: currentText.split(/\s+/).filter(word => word.length > 0).length,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId: currentUser.uid
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                await db.collection('documents').add(docData);
+                // Save to the original structure: users/{userId}/library/{docId}
+                await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).set(docData);
                 showToast('Saved to cloud! ☁️', 'success');
+                
+                // Refresh library display
+                loadUserData();
             } catch (error) {
                 console.error('Save error:', error);
                 showToast('Failed to save', 'error');
@@ -1191,24 +1267,30 @@
             if (!currentUser) return;
             
             try {
-                // Load user's documents from cloud
-                const snapshot = await db.collection('documents')
-                    .where('userId', '==', currentUser.uid)
+                console.log('Loading user data for:', currentUser.uid);
+                
+                // Load from the original structure: users/{userId}/library
+                const snapshot = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('library')
                     .orderBy('createdAt', 'desc')
-                    .limit(10)
+                    .limit(20)
                     .get();
                 
+                console.log('Found documents:', snapshot.docs.length);
                 renderLibrary(snapshot.docs);
                 
             } catch (error) {
-                console.error('Load error:', error);
+                console.error('Load error with orderBy:', error);
                 // Try without orderBy in case index doesn't exist yet
                 try {
-                    const fallbackSnapshot = await db.collection('documents')
-                        .where('userId', '==', currentUser.uid)
-                        .limit(10)
+                    const fallbackSnapshot = await db.collection('users')
+                        .doc(currentUser.uid)
+                        .collection('library')
+                        .limit(20)
                         .get();
                     
+                    console.log('Fallback found documents:', fallbackSnapshot.docs.length);
                     renderLibrary(fallbackSnapshot.docs);
                 } catch (fallbackError) {
                     console.error('Fallback load error:', fallbackError);
@@ -1219,6 +1301,8 @@
 
         function renderLibrary(docs) {
             const libraryContent = document.getElementById('libraryContent');
+            
+            console.log('Rendering library with', docs.length, 'documents');
             
             if (docs.length === 0) {
                 libraryContent.innerHTML = `
@@ -1233,7 +1317,20 @@
             
             libraryContent.innerHTML = docs.map(doc => {
                 const data = doc.data();
-                const date = data.createdAt ? data.createdAt.toDate() : new Date();
+                console.log('Document data:', data);
+                
+                // Handle different timestamp formats
+                let date = new Date();
+                if (data.createdAt) {
+                    if (data.createdAt.toDate) {
+                        date = data.createdAt.toDate();
+                    } else if (data.createdAt instanceof Date) {
+                        date = data.createdAt;
+                    } else if (typeof data.createdAt === 'string') {
+                        date = new Date(data.createdAt);
+                    }
+                }
+                
                 const timeAgo = getTimeAgo(date);
                 
                 return `
@@ -1258,7 +1355,8 @@
 
         async function loadDocument(docId) {
             try {
-                const doc = await db.collection('documents').doc(docId).get();
+                // Load from the original structure: users/{userId}/library/{docId}
+                const doc = await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).get();
                 if (doc.exists) {
                     const data = doc.data();
                     textArea.value = data.content || '';
@@ -1280,7 +1378,8 @@
             }
             
             try {
-                await db.collection('documents').doc(docId).delete();
+                // Delete from the original structure: users/{userId}/library/{docId}
+                await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).delete();
                 showToast('Document deleted 🗑️', 'info');
                 loadUserData(); // Refresh library
             } catch (error) {
@@ -1310,14 +1409,17 @@
             }
             
             try {
-                const snapshot = await db.collection('documents')
-                    .where('userId', '==', currentUser.uid)
+                // Export from the original structure: users/{userId}/library
+                const snapshot = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('library')
                     .get();
                 
                 const documents = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
-                    createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null
+                    createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null,
+                    updatedAt: doc.data().updatedAt ? doc.data().updatedAt.toDate().toISOString() : null
                 }));
                 
                 const dataStr = JSON.stringify(documents, null, 2);
@@ -1354,11 +1456,13 @@
                     }
                     
                     for (const doc of documents) {
-                        delete doc.id; // Remove old ID
-                        doc.userId = currentUser.uid; // Update user ID
+                        const docId = doc.id || Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                        delete doc.id; // Remove old ID from data
                         doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                        doc.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
                         
-                        await db.collection('documents').add(doc);
+                        // Import to the original structure: users/{userId}/library/{docId}
+                        await db.collection('users').doc(currentUser.uid).collection('library').doc(docId).set(doc);
                     }
                     
                     showToast(`Imported ${documents.length} documents! 📥`, 'success');
