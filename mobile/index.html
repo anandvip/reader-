@@ -732,6 +732,20 @@
         </div>
         
         <div class="auth-form">
+            <!-- Google Sign In -->
+            <button class="control-btn" id="googleSignIn" style="background: linear-gradient(135deg, #4285f4, #34a853); margin-bottom: var(--space-lg);">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </button>
+            
+            <!-- Divider -->
+            <div style="display: flex; align-items: center; margin: var(--space-lg) 0; color: rgba(255,255,255,0.7);">
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.2);"></div>
+                <span style="padding: 0 var(--space-md); font-size: 0.9rem;">or</span>
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.2);"></div>
+            </div>
+            
+            <!-- Email/Password -->
             <div class="form-group">
                 <label class="form-label">Email</label>
                 <input type="email" class="form-input" id="authEmail" placeholder="your@email.com">
@@ -938,6 +952,22 @@
         const toastContainer = document.getElementById('toastContainer');
 
         // Authentication
+        document.getElementById('googleSignIn').addEventListener('click', async () => {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                await auth.signInWithPopup(provider);
+                showToast('Welcome! Signed in with Google 🎉', 'success');
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showToast('Google sign-in failed: ' + error.message, 'error');
+                }
+            }
+        });
+
         document.getElementById('authSubmit').addEventListener('click', async () => {
             const email = document.getElementById('authEmail').value;
             const password = document.getElementById('authPassword').value;
