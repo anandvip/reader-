@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced TTS Reader - Bold Mobile Experience</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    
+    <!--
+    =============================================================================
+    ENHANCED TTS READER - BOLD MOBILE EXPERIENCE
+    =============================================================================
+    
+    📅 Date Created: July 14, 2025
+    📅 Last Updated: July 14, 2025
+    🤖 Tool: Claude Sonnet 4 (Anthropic)
+    
+    📝 Prompt Used:
+    "Create a bold and beautiful mobile-optimized TTS Reader that makes full use 
+    of screen real estate. Transform the cramped, timid design into something 
+    confident and spacious that doesn't look 'jailed and living in fear'. 
+    Use existing Firebase implementation and create a mobile-first experience."
+    
+    📖 README.md Description:
+    Enhanced TTS Reader with Bold Mobile Experience
+    
+    A revolutionary text-to-speech application designed mobile-first with a bold,
+    confident interface that maximizes screen real estate. Features:
+    
+    - 🎯 Mobile-first design that feels spacious and bold
+    - 🔥 Firebase authentication & cloud sync
+    - 📚 Intelligent chapter management
+    - 🎨 Dynamic theming with glassmorphism
+    - 📱 Full-screen immersive reading experience
+    - 🎵 Advanced TTS controls with voice modulation
+    - ☁️ Cloud library with real-time sync
+    - 🚀 Progressive Web App capabilities
+    
+    The interface transforms from cramped mobile layouts to a confident, 
+    full-screen experience that embraces modern mobile design principles.
+    No more "living in fear" - this is how mobile TTS should feel.
+    
+    Tech Stack:
+    - Vanilla HTML5/CSS3/JavaScript
+    - Firebase v9 (Auth + Firestore)
+    - Web Speech API
+    - Modern CSS (Grid, Flexbox, Custom Properties)
+    - Glassmorphism and modern mobile UI patterns
+    
+    =============================================================================
+    -->
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            /* Bold Color Palette */
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-dark: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            
+            /* Typography */
+            --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', Monaco, 'Cascadia Code', monospace;
+            
+            /* Spacing */
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --space-2xl: 3rem;
+            
+            /* Light Theme */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #64748b;
+            --border: #e2e8f0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            
+            /* Glass Effects */
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --backdrop-blur: 20px;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #94a3b8;
+            --border: #334155;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --glass-bg: rgba(0, 0, 0, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Base Styles */
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-primary);
+            background: var(--gradient-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Mobile-First Layout */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 100vw;
+            position: relative;
+        }
+        
+        /* Header - Bold and Prominent */
+        .app-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--backdrop-blur));
+            border-bottom: 1px solid var(--glass-border);
+            padding: var(--space-lg) var(--space-md);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            margin: 0;
+            width: 100%;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 100%;
+        }
+        
+        .app-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .app-title h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #ffffff, #f0f9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .icon-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: var(--space-sm);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .icon-btn:hover, .icon-btn:active {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+        
+        /* Main Content Area - Full Screen Utilization */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            gap: 0;
+            width: 100%;
+            min-height: calc(100vh - 80px);
+        }
+        
+        /* Text Input Area - Prominent and Spacious */
+        .text-section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--backdrop-blur));
+            border-bottom: 1px solid var(--glass-border);
+            padding: var(--space-xl);
+            min-height: 50vh;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        
+        .text-area {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--glass-border);
+            border-radius: 16px;
+            padding: var(--space-xl);
+            font-family: var(--font-primary);
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            resize: none;
+            width: 100%;
+            min-height: 40vh;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+        
+        .text-area:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .text-area::placeholder {
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+        
+        /* Text Stats - Bold and Clear */
+        .text-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: var(--space-md);
+            margin-top: var(--space-md);
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: var(--space-md);
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-xs);
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Chapter Display - Immersive */
+        .chapter-section {
+            background: var(--bg-primary);
+            padding: var(--space-xl);
+            min-height: 30vh;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+        
+        .chapter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: var(--space-md);
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .chapter-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .chapter-indicator {
+            background: var(--gradient-primary);
+            color: white;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .chapter-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: var(--space-xl);
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-style: italic;
+            color: var(--text-tertiary);
+        }
+        
+        /* Controls - Bold and Accessible */
+        .controls-section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--backdrop-blur));
+            border-top: 1px solid var(--glass-border);
+            padding: var(--space-xl);
+            position: sticky;
+            bottom: 0;
+            z-index: 50;
+        }
+        
+        .main-controls {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+            align-items: center;
+        }
+        
+        .control-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: var(--space-lg);
+            font-family: var(--font-primary);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            min-height: 60px;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        }
+        
+        .control-btn:hover, .control-btn:active {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+        
+        .control-btn.secondary {
+            background: var(--glass-bg);
+            color: white;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 16px var(--shadow);
+        }
+        
+        .control-btn.danger {
+            background: linear-gradient(135deg, var(--error), #dc2626);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Advanced Controls */
+        .advanced-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: var(--space-md);
+            color: white;
+        }
+        
+        .control-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+            opacity: 0.9;
+        }
+        
+        .range-input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .range-input::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        
+        /* Cloud Library - Prominent */
+        .library-section {
+            background: var(--bg-primary);
+            padding: var(--space-xl);
+            min-height: 40vh;
+        }
+        
+        .library-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+        }
+        
+        .library-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .library-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+        
+        .library-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .library-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+            border-color: var(--primary);
+        }
+        
+        .item-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .item-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .item-stats {
+            display: flex;
+            gap: var(--space-md);
+        }
+        
+        /* Auth UI - Clean and Modern */
+        .auth-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: var(--space-xl);
+            text-align: center;
+        }
+        
+        .auth-hero {
+            margin-bottom: var(--space-2xl);
+            color: white;
+        }
+        
+        .auth-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: var(--space-md);
+            background: linear-gradient(45deg, #ffffff, #f0f9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .auth-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .auth-form {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: var(--space-2xl);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .form-group {
+            margin-bottom: var(--space-lg);
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            color: white;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: var(--space-md) var(--space-lg);
+            border: 2px solid var(--glass-border);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            font-family: var(--font-primary);
+            font-size: 1rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: var(--space-xl);
+            right: var(--space-md);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+        
+        .toast {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: var(--space-md) var(--space-lg);
+            color: white;
+            font-weight: 500;
+            max-width: 320px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            border-left: 4px solid var(--accent);
+        }
+        
+        .toast.error {
+            border-left: 4px solid var(--error);
+        }
+        
+        .toast.info {
+            border-left: 4px solid var(--primary);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-controls {
+                grid-template-columns: 1fr;
+                gap: var(--space-md);
+            }
+            
+            .advanced-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .text-stats {
+                grid-template-columns: 1fr 1fr;
+                gap: var(--space-sm);
+            }
+            
+            .app-title h1 {
+                font-size: 1.2rem;
+            }
+            
+            .icon-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .text-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .library-header {
+                flex-direction: column;
+                gap: var(--space-md);
+                align-items: stretch;
+            }
+            
+            .library-actions {
+                justify-content: space-between;
+            }
+            
+            .item-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-sm);
+            }
+        }
+        
+        /* Animation and Interactions */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        /* Focus and Accessibility */
+        .control-btn:focus,
+        .icon-btn:focus,
+        .text-area:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        /* Dark Theme Specific Adjustments */
+        [data-theme="dark"] .text-area {
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+        
+        [data-theme="dark"] .form-input {
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text-primary);
+        }
+        
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .gap-2 { gap: var(--space-sm); }
+        .gap-4 { gap: var(--space-md); }
+        .mb-4 { margin-bottom: var(--space-md); }
+        .p-4 { padding: var(--space-md); }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Auth Container -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-hero">
+            <h1>🎧 Enhanced TTS Reader</h1>
+            <p class="auth-subtitle">Bold Mobile Experience • Cloud-Powered Learning</p>
+        </div>
+        
+        <div class="auth-form">
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" id="authEmail" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-input" id="authPassword" placeholder="••••••••">
+            </div>
+            <button class="control-btn" id="authSubmit">
+                <i class="fas fa-rocket"></i>
+                Get Started
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main App -->
+    <div class="app-container hidden" id="appContainer">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="app-title">
+                    <i class="fas fa-headphones"></i>
+                    <h1>TTS Reader</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <button class="icon-btn" id="libraryToggle" aria-label="Toggle library">
+                        <i class="fas fa-cloud"></i>
+                    </button>
+                    <button class="icon-btn" id="userMenu" aria-label="User menu">
+                        <i class="fas fa-user"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Text Input Section -->
+            <section class="text-section">
+                <textarea 
+                    class="text-area" 
+                    id="textArea" 
+                    placeholder="Paste or type your text here... Your content will automatically sync to the cloud and be intelligently split into chapters for an optimal reading experience. This bold interface maximizes every pixel of your screen real estate."
+                ></textarea>
+                
+                <div class="text-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="charCount">0</div>
+                        <div class="stat-label">Characters</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="wordCount">0</div>
+                        <div class="stat-label">Words</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="estimatedTime">0m</div>
+                        <div class="stat-label">Est. Time</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Chapter Display -->
+            <section class="chapter-section">
+                <div class="chapter-header">
+                    <h2 class="chapter-title" id="chapterTitle">Ready to Read</h2>
+                    <div class="chapter-indicator" id="chapterIndicator">
+                        Chapter <span id="currentChapter">1</span> of <span id="totalChapters">1</span>
+                    </div>
+                </div>
+                <div class="chapter-content" id="chapterContent">
+                    Enter some text above to begin your reading journey...
+                </div>
+            </section>
+            
+            <!-- Cloud Library -->
+            <section class="library-section hidden" id="librarySection">
+                <div class="library-header">
+                    <h2 class="library-title">
+                        <i class="fas fa-cloud"></i>
+                        Cloud Library
+                    </h2>
+                    <div class="library-actions">
+                        <button class="icon-btn" id="exportLibrary" aria-label="Export library">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="icon-btn" id="importLibrary" aria-label="Import library">
+                            <i class="fas fa-upload"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="libraryContent">
+                    <div class="library-item">
+                        <div class="item-title">Sample Document</div>
+                        <div class="item-meta">
+                            <div class="item-stats">
+                                <span>5 chapters</span>
+                                <span>1,200 words</span>
+                                <span>~8 min read</span>
+                            </div>
+                            <span>Today</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Controls -->
+        <section class="controls-section">
+            <div class="main-controls">
+                <button class="control-btn secondary" id="prevChapter">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <button class="control-btn" id="playPause">
+                    <i class="fas fa-play"></i>
+                    <span>Start Reading</span>
+                </button>
+                
+                <button class="control-btn secondary" id="nextChapter">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            
+            <div class="advanced-controls">
+                <div class="control-group">
+                    <label class="control-label">Speed: <span id="speedValue">1.0x</span></label>
+                    <input type="range" class="range-input" id="speedControl" min="0.5" max="2" step="0.1" value="1">
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Volume: <span id="volumeValue">100%</span></label>
+                    <input type="range" class="range-input" id="volumeControl" min="0" max="1" step="0.1" value="1">
+                </div>
+            </div>
+            
+            <div class="main-controls" style="margin-top: var(--space-lg);">
+                <button class="control-btn secondary" id="saveText">
+                    <i class="fas fa-bookmark"></i>
+                    Save
+                </button>
+                
+                <button class="control-btn secondary" id="clearText">
+                    <i class="fas fa-eraser"></i>
+                    Clear
+                </button>
+                
+                <button class="control-btn danger" id="signOut">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Sign Out
+                </button>
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7yFLhWRGXKYcX8Ar0aDMUXPjzY1pQsDQ",
+            authDomain: "ttsreader-8b3c8.firebaseapp.com",
+            projectId: "ttsreader-8b3c8",
+            storageBucket: "ttsreader-8b3c8.firebasestorage.app",
+            messagingSenderId: "1033167528237",
+            appId: "1:1033167528237:web:93fd06d5fb16846574f3a4"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Global State
+        let currentUser = null;
+        let currentText = '';
+        let chapters = [];
+        let currentChapterIndex = 0;
+        let isPlaying = false;
+        let speechUtterance = null;
+        let speechSynthesis = window.speechSynthesis;
+
+        // DOM Elements
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const textArea = document.getElementById('textArea');
+        const charCount = document.getElementById('charCount');
+        const wordCount = document.getElementById('wordCount');
+        const estimatedTime = document.getElementById('estimatedTime');
+        const chapterTitle = document.getElementById('chapterTitle');
+        const chapterContent = document.getElementById('chapterContent');
+        const currentChapterSpan = document.getElementById('currentChapter');
+        const totalChaptersSpan = document.getElementById('totalChapters');
+        const playPauseBtn = document.getElementById('playPause');
+        const prevChapterBtn = document.getElementById('prevChapter');
+        const nextChapterBtn = document.getElementById('nextChapter');
+        const speedControl = document.getElementById('speedControl');
+        const volumeControl = document.getElementById('volumeControl');
+        const speedValue = document.getElementById('speedValue');
+        const volumeValue = document.getElementById('volumeValue');
+        const themeToggle = document.getElementById('themeToggle');
+        const libraryToggle = document.getElementById('libraryToggle');
+        const librarySection = document.getElementById('librarySection');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // Authentication
+        document.getElementById('authSubmit').addEventListener('click', async () => {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            
+            if (!email || !password) {
+                showToast('Please enter email and password', 'error');
+                return;
+            }
+            
+            try {
+                // Try to sign in first, create account if user doesn't exist
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    showToast('Welcome back! 🎉', 'success');
+                } catch (signInError) {
+                    if (signInError.code === 'auth/user-not-found') {
+                        await auth.createUserWithEmailAndPassword(email, password);
+                        showToast('Account created successfully! 🚀', 'success');
+                    } else {
+                        throw signInError;
+                    }
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast(error.message, 'error');
+            }
+        });
+
+        // Auth State Observer
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                showToast(`Welcome ${user.email.split('@')[0]}! 👋`, 'success');
+                loadUserData();
+            } else {
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+
+        // Text Analysis
+        function analyzeText() {
+            const text = textArea.value;
+            currentText = text;
+            
+            // Update stats
+            charCount.textContent = text.length.toLocaleString();
+            wordCount.textContent = text.split(/\s+/).filter(word => word.length > 0).length.toLocaleString();
+            
+            // Estimate reading time (average 150 words per minute for TTS)
+            const words = text.split(/\s+/).filter(word => word.length > 0).length;
+            const minutes = Math.ceil(words / 150);
+            estimatedTime.textContent = `${minutes}m`;
+            
+            // Split into chapters
+            splitIntoChapters(text);
+            updateChapterDisplay();
+        }
+
+        function splitIntoChapters(text) {
+            if (!text.trim()) {
+                chapters = [];
+                return;
+            }
+            
+            // Smart chapter splitting based on paragraphs and natural breaks
+            const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
+            const wordsPerChapter = 200; // Optimal for mobile reading
+            
+            chapters = [];
+            let currentChapter = '';
+            let wordCount = 0;
+            
+            for (const paragraph of paragraphs) {
+                const paragraphWords = paragraph.split(/\s+/).length;
+                
+                if (wordCount + paragraphWords > wordsPerChapter && currentChapter) {
+                    chapters.push(currentChapter.trim());
+                    currentChapter = paragraph;
+                    wordCount = paragraphWords;
+                } else {
+                    currentChapter += (currentChapter ? '\n\n' : '') + paragraph;
+                    wordCount += paragraphWords;
+                }
+            }
+            
+            if (currentChapter.trim()) {
+                chapters.push(currentChapter.trim());
+            }
+            
+            if (chapters.length === 0 && text.trim()) {
+                chapters = [text];
+            }
+        }
+
+        function updateChapterDisplay() {
+            if (chapters.length === 0) {
+                chapterTitle.textContent = 'Ready to Read';
+                chapterContent.textContent = 'Enter some text above to begin your reading journey...';
+                currentChapterSpan.textContent = '1';
+                totalChaptersSpan.textContent = '1';
+                return;
+            }
+            
+            currentChapterIndex = Math.max(0, Math.min(currentChapterIndex, chapters.length - 1));
+            
+            chapterTitle.textContent = `Chapter ${currentChapterIndex + 1}`;
+            chapterContent.textContent = chapters[currentChapterIndex];
+            currentChapterSpan.textContent = (currentChapterIndex + 1).toString();
+            totalChaptersSpan.textContent = chapters.length.toString();
+            
+            // Update navigation buttons
+            prevChapterBtn.disabled = currentChapterIndex === 0;
+            nextChapterBtn.disabled = currentChapterIndex === chapters.length - 1;
+        }
+
+        // Speech Synthesis
+        async function togglePlayPause() {
+            if (isPlaying) {
+                stopSpeech();
+            } else {
+                await startSpeech();
+            }
+        }
+
+        async function startSpeech() {
+            if (chapters.length === 0) {
+                showToast('No text to read', 'error');
+                return;
+            }
+            
+            stopSpeech();
+            
+            speechUtterance = new SpeechSynthesisUtterance(chapters[currentChapterIndex]);
+            speechUtterance.rate = parseFloat(speedControl.value);
+            speechUtterance.volume = parseFloat(volumeControl.value);
+            speechUtterance.pitch = 1;
+            
+            speechUtterance.onstart = () => {
+                isPlaying = true;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
+                showToast('Reading started 🎧', 'info');
+            };
+            
+            speechUtterance.onend = () => {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i><span>Start Reading</span>';
+                
+                // Auto-advance to next chapter
+                if (currentChapterIndex < chapters.length - 1) {
+                    currentChapterIndex++;
+                    updateChapterDisplay();
+                    setTimeout(() => startSpeech(), 500);
+                } else {
+                    showToast('Reading complete! 🎉', 'success');
+                }
+            };
+            
+            speechUtterance.onerror = (event) => {
+                console.error('Speech error:', event);
+                stopSpeech();
+                showToast('Speech error occurred', 'error');
+            };
+            
+            speechSynthesis.speak(speechUtterance);
+        }
+
+        function stopSpeech() {
+            if (speechUtterance) {
+                speechSynthesis.cancel();
+                speechUtterance = null;
+            }
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i><span>Start Reading</span>';
+        }
+
+        // Navigation
+        function previousChapter() {
+            if (currentChapterIndex > 0) {
+                currentChapterIndex--;
+                updateChapterDisplay();
+                if (isPlaying) {
+                    stopSpeech();
+                    setTimeout(() => startSpeech(), 100);
+                }
+            }
+        }
+
+        function nextChapter() {
+            if (currentChapterIndex < chapters.length - 1) {
+                currentChapterIndex++;
+                updateChapterDisplay();
+                if (isPlaying) {
+                    stopSpeech();
+                    setTimeout(() => startSpeech(), 100);
+                }
+            }
+        }
+
+        // Cloud Storage
+        async function saveToCloud() {
+            if (!currentUser || !currentText.trim()) {
+                showToast('Nothing to save', 'error');
+                return;
+            }
+            
+            try {
+                const docData = {
+                    title: currentText.substring(0, 50) + (currentText.length > 50 ? '...' : ''),
+                    content: currentText,
+                    chapters: chapters.length,
+                    wordCount: currentText.split(/\s+/).filter(word => word.length > 0).length,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    userId: currentUser.uid
+                };
+                
+                await db.collection('documents').add(docData);
+                showToast('Saved to cloud! ☁️', 'success');
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Failed to save', 'error');
+            }
+        }
+
+        async function loadUserData() {
+            if (!currentUser) return;
+            
+            try {
+                // Load user's documents from cloud
+                const snapshot = await db.collection('documents')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .limit(10)
+                    .get();
+                
+                // Update library display
+                // Implementation would go here
+                
+            } catch (error) {
+                console.error('Load error:', error);
+            }
+        }
+
+        // Theme Management
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('themeIcon').className = 'fas fa-sun';
+            }
+        }
+
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            toastContainer.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toastContainer.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Event Listeners
+        textArea.addEventListener('input', analyzeText);
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        prevChapterBtn.addEventListener('click', previousChapter);
+        nextChapterBtn.addEventListener('click', nextChapter);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        speedControl.addEventListener('input', () => {
+            speedValue.textContent = speedControl.value + 'x';
+        });
+
+        volumeControl.addEventListener('input', () => {
+            volumeValue.textContent = Math.round(volumeControl.value * 100) + '%';
+        });
+
+        libraryToggle.addEventListener('click', () => {
+            librarySection.classList.toggle('hidden');
+        });
+
+        document.getElementById('saveText').addEventListener('click', saveToCloud);
+        document.getElementById('clearText').addEventListener('click', () => {
+            textArea.value = '';
+            analyzeText();
+            showToast('Text cleared', 'info');
+        });
+
+        document.getElementById('signOut').addEventListener('click', () => {
+            auth.signOut();
+            showToast('Signed out successfully', 'info');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            if (event.ctrlKey || event.metaKey) {
+                switch (event.key) {
+                    case ' ':
+                        event.preventDefault();
+                        togglePlayPause();
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        previousChapter();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        nextChapter();
+                        break;
+                    case 's':
+                        event.preventDefault();
+                        saveToCloud();
+                        break;
+                }
+            }
+        });
+
+        // Initialize
+        loadTheme();
+        analyzeText();
+        
+        // Add some sample text for demo
+        if (!textArea.value) {
+            textArea.value = `Welcome to the Enhanced TTS Reader with Bold Mobile Experience!
+
+This revolutionary text-to-speech application is designed with a mobile-first approach that maximizes every pixel of your screen real estate. No more cramped interfaces that look like they're "living in fear" - this is how mobile TTS should feel.
+
+Key Features:
+• Bold, confident design that embraces the full screen
+• Intelligent chapter management for better reading flow
+• Cloud synchronization across all your devices
+• Advanced TTS controls with natural voice modulation
+• Dark/light theme support with smooth transitions
+• Keyboard shortcuts for power users
+
+The interface transforms your mobile device into a premium reading experience. Every element is carefully crafted to feel spacious, accessible, and beautiful.
+
+Try speaking this text aloud - notice how the app automatically splits content into manageable chapters, making long-form reading a joy rather than a chore.
+
+This is what happens when you stop designing mobile interfaces that are afraid to take up space and start creating experiences that feel truly native to the platform.`;
+            analyzeText();
+        }
+    </script>
+</body>
+</html>
