@@ -837,13 +837,16 @@
             </section>
             
             <!-- Cloud Library -->
-            <section class="library-section hidden" id="librarySection">
+            <section class="library-section" id="librarySection">
                 <div class="library-header">
                     <h2 class="library-title">
                         <i class="fas fa-cloud"></i>
                         Cloud Library
                     </h2>
                     <div class="library-actions">
+                        <button class="icon-btn" id="refreshLibrary" aria-label="Refresh library" title="Refresh Library">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                         <button class="icon-btn" id="exportLibrary" aria-label="Export library">
                             <i class="fas fa-download"></i>
                         </button>
@@ -853,7 +856,11 @@
                     </div>
                 </div>
                 <div id="libraryContent">
-                    <!-- Dynamic content will be loaded here -->
+                    <div style="text-align: center; padding: var(--space-2xl); color: var(--text-secondary);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: var(--space-md);"></i>
+                        <h3>Loading your library...</h3>
+                        <p>Please wait while we fetch your documents</p>
+                    </div>
                 </div>
             </section>
         </main>
@@ -1343,6 +1350,7 @@
             if (!currentUser) return;
             
             try {
+                console.log('=== LOADING USER DATA ===');
                 console.log('Loading user data for:', currentUser.uid);
                 
                 // Load from the original structure: users/{userId}/library
@@ -1354,12 +1362,22 @@
                     .get();
                 
                 console.log('Found documents:', snapshot.docs.length);
+                console.log('Documents:', snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() })));
+                
                 renderLibrary(snapshot.docs);
+                
+                // Auto-show library if we have data
+                if (snapshot.docs.length > 0) {
+                    const librarySection = document.getElementById('librarySection');
+                    librarySection.classList.remove('hidden');
+                    showToast(`Found ${snapshot.docs.length} documents in your library! 📚`, 'success');
+                }
                 
             } catch (error) {
                 console.error('Load error with orderBy:', error);
                 // Try without orderBy in case index doesn't exist yet
                 try {
+                    console.log('Trying fallback query without orderBy...');
                     const fallbackSnapshot = await db.collection('users')
                         .doc(currentUser.uid)
                         .collection('library')
@@ -1367,7 +1385,17 @@
                         .get();
                     
                     console.log('Fallback found documents:', fallbackSnapshot.docs.length);
+                    console.log('Fallback documents:', fallbackSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() })));
+                    
                     renderLibrary(fallbackSnapshot.docs);
+                    
+                    // Auto-show library if we have data
+                    if (fallbackSnapshot.docs.length > 0) {
+                        const librarySection = document.getElementById('librarySection');
+                        librarySection.classList.remove('hidden');
+                        showToast(`Found ${fallbackSnapshot.docs.length} documents in your library! 📚`, 'success');
+                    }
+                    
                 } catch (fallbackError) {
                     console.error('Fallback load error:', fallbackError);
                     showToast('Could not load library data', 'error');
@@ -1378,22 +1406,31 @@
         function renderLibrary(docs) {
             const libraryContent = document.getElementById('libraryContent');
             
+            console.log('=== RENDER LIBRARY DEBUG ===');
             console.log('Rendering library with', docs.length, 'documents');
+            console.log('Library content element:', libraryContent);
+            
+            if (!libraryContent) {
+                console.error('Library content element not found!');
+                return;
+            }
             
             if (docs.length === 0) {
-                libraryContent.innerHTML = `
+                const emptyHtml = `
                     <div style="text-align: center; padding: var(--space-2xl); color: var(--text-secondary);">
                         <i class="fas fa-cloud" style="font-size: 3rem; margin-bottom: var(--space-md); opacity: 0.5;"></i>
                         <h3>Your Cloud Library is Empty</h3>
                         <p>Save some text to get started!</p>
                     </div>
                 `;
+                libraryContent.innerHTML = emptyHtml;
+                console.log('Set empty state HTML');
                 return;
             }
             
-            libraryContent.innerHTML = docs.map(doc => {
+            const libraryHtml = docs.map((doc, index) => {
                 const data = doc.data();
-                console.log('Document data:', data);
+                console.log(`Document ${index}:`, data);
                 
                 // Handle different timestamp formats
                 let date = new Date();
@@ -1408,25 +1445,44 @@
                 }
                 
                 const timeAgo = getTimeAgo(date);
+                const title = data.title || 'Untitled Document';
+                const chapters = data.chapters || 1;
+                const wordCount = data.wordCount || 0;
+                const readTime = Math.ceil(wordCount / 150);
+                
+                console.log(`Rendering doc ${doc.id}: ${title} (${wordCount} words)`);
                 
                 return `
-                    <div class="library-item" onclick="loadDocument('${doc.id}')">
-                        <div class="item-title">${data.title || 'Untitled Document'}</div>
-                        <div class="item-meta">
-                            <div class="item-stats">
-                                <span>${data.chapters || 1} chapters</span>
-                                <span>${(data.wordCount || 0).toLocaleString()} words</span>
-                                <span>~${Math.ceil((data.wordCount || 0) / 150)}m read</span>
+                    <div class="library-item" onclick="loadDocument('${doc.id}')" style="margin-bottom: 1rem;">
+                        <div class="item-title" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+                            ${title}
+                        </div>
+                        <div class="item-meta" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-secondary);">
+                            <div class="item-stats" style="display: flex; gap: 1rem;">
+                                <span>${chapters} chapters</span>
+                                <span>${wordCount.toLocaleString()} words</span>
+                                <span>~${readTime}m read</span>
                             </div>
                             <span>${timeAgo}</span>
                         </div>
                         <button class="icon-btn" onclick="event.stopPropagation(); deleteDocument('${doc.id}')" 
-                                style="position: absolute; top: var(--space-md); right: var(--space-md); background: var(--error); opacity: 0.8;">
+                                style="position: absolute; top: 1rem; right: 1rem; background: var(--error); opacity: 0.8; width: 32px; height: 32px; border-radius: 50%; border: none; color: white; cursor: pointer;">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 `;
             }).join('');
+            
+            console.log('Generated HTML length:', libraryHtml.length);
+            libraryContent.innerHTML = libraryHtml;
+            console.log('Library HTML updated');
+            
+            // Make sure library section is visible
+            const librarySection = document.getElementById('librarySection');
+            if (librarySection && librarySection.classList.contains('hidden')) {
+                console.log('Library section was hidden, showing it...');
+                librarySection.classList.remove('hidden');
+            }
         }
 
         async function loadDocument(docId) {
@@ -1630,6 +1686,21 @@
 
         libraryToggle.addEventListener('click', () => {
             librarySection.classList.toggle('hidden');
+            const isVisible = !librarySection.classList.contains('hidden');
+            
+            // Update button appearance
+            if (isVisible) {
+                libraryToggle.style.background = 'rgba(255, 255, 255, 0.3)';
+                showToast('Library opened 📚', 'info');
+                
+                // Reload data when opening library
+                if (currentUser) {
+                    loadUserData();
+                }
+            } else {
+                libraryToggle.style.background = 'var(--glass-bg)';
+                showToast('Library closed', 'info');
+            }
         });
 
         document.getElementById('saveText').addEventListener('click', saveToCloud);
@@ -1649,6 +1720,10 @@
 
         document.getElementById('exportLibrary').addEventListener('click', exportLibrary);
         document.getElementById('importLibrary').addEventListener('click', importLibrary);
+        document.getElementById('refreshLibrary').addEventListener('click', () => {
+            showToast('Refreshing library... 🔄', 'info');
+            loadUserData();
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (event) => {
