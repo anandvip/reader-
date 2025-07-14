@@ -1764,6 +1764,7 @@
             
             populateVoices();
             renderPlaylist();
+            checkFirstTimeUser();
         }
         
         // Enhanced voice population with better sorting
@@ -2424,5 +2425,153 @@
             }
         });
 
-        // Enhanced playlist functions
-        window.playFromPlaylist = async
+        // Enhanced playlist functions - COMPLETED
+        window.playFromPlaylist = async function(playlistIndex, chapterIndex = 0) {
+            if (isPlaying) {
+                synth.cancel();
+                await finishSpeaking();
+            }
+            
+            const item = playlist[playlistIndex];
+            if (!item || !item.chapters.length) {
+                showToast('❌ No chapters found in this item', 'error');
+                return;
+            }
+            
+            textArea.value = item.text;
+            updateTextStats();
+            
+            chapters = item.chapters;
+            currentChapterIndex = chapterIndex;
+            totalChapters = chapters.length;
+            
+            const wakeLockSuccess = await requestWakeLock();
+            if (!wakeLockSuccess) {
+                showToast('⚠️ Starting without screen lock - consider keeping device awake', 'error', 3000);
+            }
+            
+            isPlaying = true;
+            wasPlaying = true;
+            
+            const qualityMode = currentTTSMode === 'neural' && isNeuralTTSAvailable ? 'Neural TTS' : 'Enhanced Browser TTS';
+            const startChapter = chapters[chapterIndex];
+            showToast(`🚀 Playing "${item.title}" from ${startChapter.title} with ${qualityMode}...`, 'speaking');
+            speakChapters(chapters, chapterIndex);
+        };
+
+        // Edit playlist item
+        window.editPlaylistItem = function(playlistIndex) {
+            const item = playlist[playlistIndex];
+            if (!item) return;
+            
+            const newTitle = prompt('Edit title:', item.title);
+            if (newTitle && newTitle.trim() !== item.title) {
+                item.title = newTitle.trim();
+                savePlaylist();
+                renderPlaylist();
+                showToast('✅ Title updated successfully', 'success');
+            }
+        };
+
+        // Remove from playlist
+        window.removeFromPlaylist = function(playlistIndex) {
+            const item = playlist[playlistIndex];
+            if (!item) return;
+            
+            if (confirm(`Remove "${item.title}" from library?`)) {
+                playlist.splice(playlistIndex, 1);
+                savePlaylist();
+                renderPlaylist();
+                showToast('✅ Item removed from library', 'success');
+            }
+        };
+
+        // Export playlist
+        exportButton.addEventListener('click', () => {
+            if (playlist.length === 0) {
+                showToast('⚠️ No items to export', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(playlist, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `enhanced-tts-library-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showToast('✅ Library exported successfully!', 'success');
+        });
+
+        // Import playlist
+        importButton.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    
+                    if (!Array.isArray(importedData)) {
+                        throw new Error('Invalid file format');
+                    }
+                    
+                    // Validate and merge data
+                    let importedCount = 0;
+                    importedData.forEach(item => {
+                        if (item.title && item.text && item.chapters) {
+                            // Ensure unique ID
+                            item.id = generateUniqueId();
+                            item.createdAt = item.createdAt || new Date().toISOString();
+                            
+                            // Check for duplicates based on title and text length
+                            const isDuplicate = playlist.some(existing => 
+                                existing.title === item.title && 
+                                Math.abs(existing.text.length - item.text.length) < 10
+                            );
+                            
+                            if (!isDuplicate) {
+                                playlist.push(item);
+                                importedCount++;
+                            }
+                        }
+                    });
+                    
+                    if (importedCount > 0) {
+                        savePlaylist();
+                        renderPlaylist();
+                        showToast(`✅ Imported ${importedCount} items successfully!`, 'success');
+                    } else {
+                        showToast('⚠️ No new items found to import', 'error');
+                    }
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showToast('❌ Import failed. Please check file format.', 'error');
+                }
+            };
+            
+            reader.onerror = () => {
+                showToast('❌ Failed to read file', 'error');
+            };
+            
+            reader.readAsText(file);
+            
+            // Reset file input
+            e.target.value = '';
+        });
+
+        // Initialize the application
+        initializeApp();
+    </script>
+</body>
+</html>
