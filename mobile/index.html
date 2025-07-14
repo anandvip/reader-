@@ -43,6 +43,7 @@
     - 🎵 Advanced TTS controls with voice modulation
     - ☁️ Cloud library with real-time sync
     - 🚀 Progressive Web App capabilities
+    - 🛡️ Robust error handling for browser extensions
     
     The interface transforms from cramped mobile layouts to a confident, 
     full-screen experience that embraces modern mobile design principles.
@@ -54,6 +55,12 @@
     - Web Speech API
     - Modern CSS (Grid, Flexbox, Custom Properties)
     - Glassmorphism and modern mobile UI patterns
+    
+    🔧 Browser Extension Compatibility:
+    - Handles popup blocker interference gracefully
+    - Automatic fallback from popup to redirect authentication
+    - Suppresses common extension-related error messages
+    - User guidance for troubleshooting auth issues
     
     =============================================================================
     -->
@@ -759,6 +766,11 @@
                 <i class="fas fa-rocket"></i>
                 Get Started
             </button>
+            
+            <!-- Help text -->
+            <div style="margin-top: var(--space-lg); text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.7);">
+                <p>💡 Having trouble? Try disabling browser extensions or allowing popups</p>
+            </div>
         </div>
     </div>
     
@@ -949,11 +961,29 @@
                 provider.addScope('email');
                 provider.addScope('profile');
                 
-                await auth.signInWithPopup(provider);
-                showToast('Welcome! Signed in with Google 🎉', 'success');
+                // Try popup first, fallback to redirect if it fails
+                try {
+                    await auth.signInWithPopup(provider);
+                    showToast('Welcome! Signed in with Google 🎉', 'success');
+                } catch (popupError) {
+                    console.log('Popup failed, trying redirect...', popupError);
+                    
+                    // If popup fails due to popup blocker or extension interference, use redirect
+                    if (popupError.code === 'auth/popup-blocked' || 
+                        popupError.code === 'auth/popup-closed-by-user' ||
+                        popupError.message.includes('message channel closed')) {
+                        
+                        showToast('Opening Google sign-in...', 'info');
+                        await auth.signInWithRedirect(provider);
+                    } else {
+                        throw popupError;
+                    }
+                }
+                
             } catch (error) {
                 console.error('Google sign-in error:', error);
-                if (error.code !== 'auth/popup-closed-by-user') {
+                if (error.code !== 'auth/popup-closed-by-user' && 
+                    !error.message.includes('message channel closed')) {
                     showToast('Google sign-in failed: ' + error.message, 'error');
                 }
             }
@@ -1003,6 +1033,18 @@
                 appContainer.classList.add('hidden');
                 // Clear library when signed out
                 document.getElementById('libraryContent').innerHTML = '';
+            }
+        });
+
+        // Handle redirect results (for when popup is blocked)
+        auth.getRedirectResult().then((result) => {
+            if (result.user) {
+                showToast('Successfully signed in with Google! 🎉', 'success');
+            }
+        }).catch((error) => {
+            console.error('Redirect result error:', error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                showToast('Sign-in error: ' + error.message, 'error');
             }
         });
 
@@ -1578,6 +1620,41 @@
         // Initialize
         loadTheme();
         analyzeText();
+        
+        // Global error handler for unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            
+            // Filter out common extension-related errors
+            if (event.reason && event.reason.message) {
+                const message = event.reason.message.toLowerCase();
+                if (message.includes('message channel closed') || 
+                    message.includes('extension context invalidated') ||
+                    message.includes('listener indicated an asynchronous response')) {
+                    // Suppress these common extension interference errors
+                    event.preventDefault();
+                    console.log('Suppressed extension interference error');
+                    return;
+                }
+            }
+            
+            // Show user-friendly error for other issues
+            if (event.reason && event.reason.code !== 'auth/popup-closed-by-user') {
+                showToast('An error occurred. Please try again.', 'error');
+            }
+        });
+        
+        // Add some helpful text about browser extensions
+        function showExtensionHelp() {
+            showToast('💡 Tip: If sign-in fails, try disabling browser extensions or allowing popups', 'info');
+        }
+        
+        // Show help after 3 seconds if user is still on auth screen
+        setTimeout(() => {
+            if (!currentUser && authContainer.style.display !== 'none') {
+                showExtensionHelp();
+            }
+        }, 3000);
         
         // Add some sample text for demo
         if (!textArea.value) {
